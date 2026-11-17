@@ -22,7 +22,7 @@ create function public.update_jump(p_event text, p_pilot text, p_task text, p_ro
 returns void language plpgsql security definer set search_path = '' as $$
 declare
   editable constant text[] := array['pen_manual', 'lane_decision', 'sep_apply', 'exit_pen', 'flag_decision', 'void', 'notes',
-                                    'lane_shift', 't_val', 'lane_dev', 'lane_outside', 'lane_pen'];
+                                    'lane_shift', 't_val', 'lane_dev', 'lane_outside', 'lane_pen', 'ref_idx'];
   p jsonb;
   old_row public.jumps;
   new_row public.jumps;
@@ -37,7 +37,8 @@ begin
   update public.jumps set
     pen_manual = new_row.pen_manual, lane_decision = new_row.lane_decision, sep_apply = new_row.sep_apply, exit_pen = new_row.exit_pen,
     flag_decision = new_row.flag_decision, void = new_row.void, notes = new_row.notes, lane_shift = new_row.lane_shift,
-    t_val = new_row.t_val, lane_dev = new_row.lane_dev, lane_outside = new_row.lane_outside, lane_pen = new_row.lane_pen
+    t_val = new_row.t_val, lane_dev = new_row.lane_dev, lane_outside = new_row.lane_outside, lane_pen = new_row.lane_pen,
+    ref_idx = new_row.ref_idx
   where (event_id, pilot_id, task, round) = (p_event, p_pilot, p_task, p_round);
   if p_clear_reviews then
     -- Nothing is deleted without a copy: the removed signatures go into the audit log entry.

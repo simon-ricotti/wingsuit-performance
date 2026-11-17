@@ -2,8 +2,8 @@
 // Static and served from the CDN, regenerated at most once a minute; only published events are visible (RLS).
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createPublicClient } from '@/lib/supabase/public';
-import { rowToJump, type EventRow, type JumpRow } from '@/lib/data/rows';
+import { publishedEvent } from '@/lib/results/public';
+import { rowToJump } from '@/lib/data/rows';
 import { TASKS, type Task } from '@/lib/engine';
 import { cfgLine } from '@/lib/events/settings';
 import { roundLabel, TASK_LABEL, TASK_UNIT } from '@/lib/jumps/score';
@@ -15,27 +15,24 @@ export async function generateStaticParams() { return []; }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data } = await createPublicClient().from('events').select('name, date').eq('id', id).maybeSingle();
-  return { title: data ? `${data.name} · Resultados · Wingsuit Performance` : 'Resultados · Wingsuit Performance' };
+  const data = await publishedEvent(id);
+  return { title: data ? `${data.ev.name} · Resultados · Wingsuit Performance` : 'Resultados · Wingsuit Performance' };
 }
 
 export default async function PublicEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = createPublicClient();
-  const [{ data: ev }, { data: rows }, { data: pilots }] = await Promise.all([
-    db.from('events').select('*').eq('id', id).maybeSingle<EventRow>(),
-    db.from('jumps').select('*').eq('event_id', id).returns<JumpRow[]>(),
-    db.from('pilots').select('id, name, gender, team'),
-  ]);
-  if (!ev) notFound();
-  const byId = new Map((pilots ?? []).map((p) => [p.id as string, p as PilotInfo]));
+  const data = await publishedEvent(id);
+  if (!data) notFound();
+  const { ev, jumps: rows, pilots } = data;
+  const byId = new Map(pilots.map((p) => [p.id, p as PilotInfo]));
   const pilot = (pid: string) => byId.get(pid);
   const name = (pid: string) => byId.get(pid)?.name ?? '';
-  const { st, jumps } = eventStandings(ev, (rows ?? []).map((r) => rowToJump(r)));
+  const { st, jumps } = eventStandings(ev, rows.map((r) => rowToJump(r)));
   const rounds = roundsShown(ev, st), tasks = TASKS.filter((t) => rounds[t].length);
   const validated = (ev.validated ?? {}) as Record<string, unknown>;
   const provisional = [...new Set(jumps.map((j) => `${j.task}|${j.round}`))].filter((k) => !validated[k]);
   const female = femaleRows(st, pilot), teams = teamRows(ev, st, pilot).filter((t) => t._rank);
+  const tbTask = (ev.tiebreak as { task?: Task } | null)?.task;
 
   return (
     <main className="wide">
@@ -62,7 +59,8 @@ export default async function PublicEventPage({ params }: { params: Promise<{ id
               <tbody>{st.rows.filter((r) => r.jumps).map((r) => (
                 <tr key={r.pilotId}>
                   <td className="rank">{r.rank}</td>
-                  <td className="l"><b>{name(r.pilotId)}</b>{pilot(r.pilotId)?.team ? <span className="small muted"> {pilot(r.pilotId)!.team}</span> : null}</td>
+                  <td className="l"><b>{name(r.pilotId)}</b>{pilot(r.pilotId)?.team ? <span className="small muted"> {pilot(r.pilotId)!.team}</span> : null}
+                    {r.tb != null && tbTask ? <span className="pill small" title="Salto de desempate (FAI 5.10.6)"> D {fmtTask(tbTask, r.tb)}</span> : null}</td>
                   {tasks.flatMap((t) => [
                     ...rounds[t].map((n, i) => {
                       const j = r.tasks[t]?.cells[n];

@@ -70,7 +70,7 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilo
     try {
       setBusy('Comprimiendo y subiendo el archivo…');
       const gz = await gzip(file);
-      const ticket = await requestJumpUpload(gz.size);
+      const ticket = await requestJumpUpload(gz.size, ev.id);
       if ('error' in ticket) { setError(ticket.error); return; }
       const up = await createClient().storage.from('originals').uploadToSignedUrl(ticket.path, ticket.token, gz, { contentType: 'application/gzip' });
       if (up.error) { setError('No pude subir el archivo. Revisá la conexión y probá de nuevo.'); return; }

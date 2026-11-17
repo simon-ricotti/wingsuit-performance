@@ -15,9 +15,14 @@ const MAX_GZ_BYTES = 20 * 1024 * 1024;
 
 export type UploadTicket = { path: string; token: string } | { error: string };
 
-export async function requestJumpUpload(size: number): Promise<UploadTicket> {
+export async function requestJumpUpload(size: number, eventId: string): Promise<UploadTicket> {
   try {
-    await assertRole('admin', 'judge', 'pilot');
+    const s = await assertRole('admin', 'judge', 'pilot');
+    // Pilots get an upload URL only when they can actually save the jump (linked record, open event).
+    if (s.role === 'pilot') {
+      const ev = s.pilotId ? await loadEvent(eventId) : null;
+      if (!ev?.pilot_uploads) return { error: 'En esta jornada los saltos los cargan los jueces.' };
+    }
     if (!(size > 0 && size <= MAX_GZ_BYTES)) return { error: 'El archivo es demasiado grande.' };
     const { data, error } = await createAdminClient().storage.from(ORIGINALS).createSignedUploadUrl(`incoming/${randomUUID()}.gz`);
     if (error || !data) return { error: 'No pude preparar la subida. Probá de nuevo.' };
@@ -45,6 +50,10 @@ export async function saveJump(input: SaveJumpInput): Promise<SaveJumpResult> {
       if (!s.pilotId) throw new JumpError('Tu usuario no está vinculado a una ficha de piloto. Pedíselo al organizador.');
       if (!ev.pilot_uploads) throw new JumpError('En esta jornada los saltos los cargan los jueces.');
       if (input.pilotId !== s.pilotId) throw new JumpError('Solo podés cargar tus propios saltos.');
+      // A pilot never replaces a jump: it may already carry judge decisions and signatures.
+      const { data: existing } = await createAdminClient().from('jumps').select('pilot_id').eq('event_id', ev.id)
+        .eq('pilot_id', s.pilotId).eq('task', input.task).eq('round', Math.round(+input.round)).maybeSingle();
+      if (existing) throw new JumpError('Ya tenés un salto cargado en esa tarea y ronda. Si hay que reemplazarlo, pedíselo a un juez.');
     }
     const task = input.task;
     const round = Math.round(+input.round);
@@ -53,8 +62,16 @@ export async function saveJump(input: SaveJumpInput): Promise<SaveJumpResult> {
     if (round === 0) {
       if (!tiebreak) throw new JumpError('La ronda tiene que ser un número a partir de 1.');
       if (task !== tiebreak) throw new JumpError(`El salto de desempate es de ${TASK_LABEL[tiebreak as keyof typeof TASK_LABEL].toLowerCase()}.`);
+      // 5.10.6: only the tied pilots fly the tiebreak.
+      const tied = (ev.tiebreak as { pilots?: string[] } | null)?.pilots ?? [];
+      if (s.role === 'pilot' && !tied.includes(input.pilotId)) throw new JumpError('El salto de desempate es solo para los pilotos empatados.');
     } else if (!(round >= 1 && round <= (ev.mode === 'competition' ? ev.rounds : 99))) {
       throw new JumpError(ev.mode === 'competition' ? `La ronda tiene que estar entre 1 y ${ev.rounds}.` : 'La ronda tiene que ser un número a partir de 1.');
+    }
+
+    const refs = (ev.refs ?? []) as unknown[];
+    if (ev.lane && refs.length && input.refIdx != null && !(Number.isInteger(input.refIdx) && input.refIdx >= 0 && input.refIdx < refs.length)) {
+      throw new JumpError('El punto de referencia elegido no existe en esta jornada.');
     }
 
     let pilotId = input.pilotId;

@@ -202,11 +202,6 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select coalesce((select role = 'admin' from public.profiles where id = auth.uid()), false)
 $$;
 
-create function public.event_is_published(p_event text)
-returns boolean language sql stable security definer set search_path = '' as $$
-  select coalesce((select published from public.events where id = p_event), false)
-$$;
-
 -- Who is making a change: the logged-in user, or the actor the server passes to a write function
 -- (server writes use the secret key, so auth.uid() is null there).
 create function public.current_actor()
@@ -278,24 +273,20 @@ alter table public.reviews   enable row level security;
 alter table public.archive   enable row level security;
 alter table public.audit_log enable row level security;
 
-create policy "published events or staff" on public.events for select
-  using (published or (select public.is_staff()));
+-- Only staff read events, jumps and their data through the API. Public results pages and the pilot's
+-- own page read on the server with the secret key, choosing exactly what they show (published events,
+-- result columns only): judge notes, uploader emails, reviewers and Storage paths are never public.
+create policy "staff reads events" on public.events for select using ((select public.is_staff()));
+create policy "staff reads jumps" on public.jumps for select using ((select public.is_staff()));
+create policy "staff reads tracks" on public.tracks for select using ((select public.is_staff()));
+create policy "staff reads files" on public.files for select using ((select public.is_staff()));
+create policy "staff reads reviews" on public.reviews for select using ((select public.is_staff()));
 
-create policy "jumps of published events or staff" on public.jumps for select
-  using ((select public.is_staff()) or public.event_is_published(event_id));
-create policy "tracks of published events or staff" on public.tracks for select
-  using ((select public.is_staff()) or public.event_is_published(event_id));
-create policy "files of published events or staff" on public.files for select
-  using ((select public.is_staff()) or public.event_is_published(event_id));
-create policy "reviews of published events or staff" on public.reviews for select
-  using ((select public.is_staff()) or public.event_is_published(event_id));
-
--- Pilots: staff sees all; everyone else sees those in a published event, and each pilot their own.
+-- Pilots: staff sees all; each pilot their own record.
 create policy "visible pilots" on public.pilots for select
   using (
     (select public.is_staff())
     or id = (select p.pilot_id from public.profiles p where p.id = (select auth.uid()))
-    or exists (select 1 from public.jumps j join public.events e on e.id = j.event_id where j.pilot_id = pilots.id and e.published)
   );
 
 create policy "own profile or admin" on public.profiles for select

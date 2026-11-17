@@ -1,12 +1,12 @@
 // Public list of published events (stage 7). Static, regenerated at most once a minute.
 import Link from 'next/link';
-import { createPublicClient } from '@/lib/supabase/public';
+import { publishedEvents } from '@/lib/results/public';
 
 export const revalidate = 60;
 export const metadata = { title: 'Resultados · Wingsuit Performance', description: 'Resultados de las jornadas de Wingsuit Performance, puntuadas con el reglamento FAI 2026.' };
 
 export default async function ResultsPage() {
-  const { data: events } = await createPublicClient().from('events').select('id, name, date, dz').order('date', { ascending: false, nullsFirst: false });
+  const events = await publishedEvents();
   return (
     <main>
       <p><Link href="/">← Inicio</Link></p>

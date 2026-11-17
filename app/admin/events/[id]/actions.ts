@@ -48,6 +48,18 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
   try { s = await assertRole('admin', 'judge'); } catch (e) { return { error: (e as Error).message }; }
   const eventId = String(form.get('event') ?? ''), op = String(form.get('op') ?? '');
   if (!/^e[0-9a-z]{4,40}$/i.test(eventId)) return { error: 'Jornada inválida.' };
+  // Publishing is the organizer's call, and needs nothing else loaded (stage 7).
+  if (op === 'publish' || op === 'unpublish') {
+    if (s.role !== 'admin') return { error: 'Publicar o despublicar una jornada lo decide el organizador.' };
+    const r = await callWrite('set_event_state', {
+      p_event: eventId, p_patch: { published: op === 'publish' }, p_text: op === 'publish' ? 'Se publicó la jornada' : 'Se despublicó la jornada',
+      p_actor: s.userId, p_who: actorName(s),
+    });
+    if (r.error) return { error: r.error };
+    revalidatePath(`/admin/events/${eventId}`, 'layout');
+    revalidatePath('/results', 'layout');
+    return { saved: true };
+  }
   const admin = createAdminClient();
   const [{ data: ev }, { data: rows }] = await Promise.all([
     admin.from('events').select('*').eq('id', eventId).maybeSingle<EventRow>(),
@@ -78,9 +90,6 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
     const ids = form.getAll('pilot').map(String).filter((id) => (pilots ?? []).some((p) => p.id === id));
     const size = Math.max(1, Math.min(30, Math.round(+(form.get('passSize') ?? 5)) || 5));
     patch = { roster: ids, pass_size: size }; text = `Participantes: ${ids.length}; pilotos por pasada: ${size}`;
-  } else if (op === 'publish' || op === 'unpublish') {
-    patch = { published: op === 'publish' }; // stage 7: visible without login at /results/<id>
-    text = op === 'publish' ? 'Se publicó la jornada' : 'Se despublicó la jornada';
   } else if (op === 'task-order-draw') {
     const order = shuffle([...TASKS], rnd);
     patch = { task_order: order }; text = `Se sorteó el orden de las tareas: ${order.map((t) => TASK_LABEL[t]).join(', ')}`; // 5.4.8
@@ -112,6 +121,5 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
   const r = await callWrite('set_event_state', { p_event: eventId, p_patch: patch, p_text: text, p_actor: s.userId, p_who: who });
   if (r.error) return { error: r.error };
   revalidatePath(`/admin/events/${eventId}`, 'layout');
-  if (op === 'publish' || op === 'unpublish') revalidatePath('/results', 'layout');
   return { saved: true };
 }

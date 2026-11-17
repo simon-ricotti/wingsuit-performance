@@ -64,7 +64,7 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
 6. **Pilotos**: cada piloto sube sus propios saltos y ve su historial; los jueces revisan.
    - **Hecho en código (nov 2026):** opción por jornada `pilot_uploads` (ajustes); `/account` del piloto (sus saltos con puntos y estado, jornadas abiertas) y `/account/events/[id]/upload` (mismo formulario y acción que los jueces, con el piloto fijo; el servidor solo deja cargar saltos propios en jornadas abiertas). El piloto se vincula a su ficha en Usuarios y roles.
 7. **Página pública** de resultados por jornada.
-   - **Hecho en código (nov 2026):** botón Publicar en los ajustes (`set_event_state`); `/results` y `/results/[id]` estáticas desde el CDN, regeneradas como mucho cada 60 s, leídas con la clave pública (RLS: solo jornadas publicadas).
+   - **Hecho en código (nov 2026):** botón Publicar en los ajustes (`set_event_state`); `/results` y `/results/[id]` estáticas desde el CDN, regeneradas como mucho cada 60 s, leídas en el servidor solo para jornadas publicadas y con las columnas de resultados (`lib/results/public.ts`). La API no muestra jornadas ni saltos a nadie que no sea juez u organizador: notas, quién cargó, firmas y rutas de Storage nunca son públicas.
 
 ## Criterios de aceptación de la mudanza
 - Mismos números que la versión vieja para la jornada de ejemplo y para las 333 de la Copa del Mundo.

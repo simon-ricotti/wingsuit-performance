@@ -31,14 +31,16 @@ export default async function AccountPage() {
   ]);
   // Points are a % of each round's best, so they need every jump of the pilot's events (5.10.2).
   const eventIds = [...new Set((mine ?? []).map((j) => j.event_id as string))];
-  const [{ data: events }, { data: rows }, { data: reviews }] = eventIds.length ? await Promise.all([
+  // One query per event (an event has well under the API's 1000-row cap; all of a pilot's events may not).
+  const [{ data: events }, perEvent, { data: reviews }] = eventIds.length ? await Promise.all([
     admin.from('events').select('*').in('id', eventIds).returns<EventRow[]>(),
-    admin.from('jumps').select('*').in('event_id', eventIds).returns<JumpRow[]>(),
+    Promise.all(eventIds.map((id) => admin.from('jumps').select('*').eq('event_id', id).returns<JumpRow[]>())),
     admin.from('reviews').select('event_id, pilot_id, task, round, reviewer_name, legacy_uid, at').in('event_id', eventIds).eq('pilot_id', s.pilotId).returns<(ReviewRow & { event_id: string })[]>(),
-  ]) : [{ data: [] as EventRow[] }, { data: [] as JumpRow[] }, { data: [] as (ReviewRow & { event_id: string })[] }];
+  ]) : [{ data: [] as EventRow[] }, [], { data: [] as (ReviewRow & { event_id: string })[] }];
+  const rows = perEvent.flatMap((r) => r.data ?? []);
 
   const list = (events ?? []).sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? ''))).flatMap((ev) => {
-    const evRows = (rows ?? []).filter((r) => r.event_id === ev.id);
+    const evRows = rows.filter((r) => r.event_id === ev.id);
     const evReviews = (reviews ?? []).filter((r) => r.event_id === ev.id);
     const { jumps } = eventStandings(ev, evRows.map((r) => rowToJump(r, evReviews)));
     return jumps.filter((j) => j.pilotId === s.pilotId).sort((a, b) => +a.round - +b.round).map((j) => ({ ev, j, status: jumpStatus(ev, j) }));

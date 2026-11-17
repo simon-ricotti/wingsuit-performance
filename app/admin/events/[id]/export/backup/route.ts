@@ -14,14 +14,21 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const s = await getSession();
   if (!s || (s.role !== 'admin' && s.role !== 'judge')) return NextResponse.json({ error: 'No tenés permiso.' }, { status: 403 });
   const admin = createAdminClient();
-  const [{ data: event }, { data: jumps }, { data: reviews }, { data: tracks }, { data: files }, { data: log }] = await Promise.all([
+  const [{ data: event }, { data: jumps }, { data: reviews }, { data: tracks }, { data: files }] = await Promise.all([
     admin.from('events').select('*').eq('id', id).maybeSingle<EventRow>(),
     admin.from('jumps').select('*').eq('event_id', id).returns<JumpRow[]>(),
     admin.from('reviews').select('pilot_id, task, round, reviewer_name, legacy_uid, at').eq('event_id', id).order('at').returns<ReviewRow[]>(),
     admin.from('tracks').select('pilot_id, task, round, packed').eq('event_id', id),
     admin.from('files').select('*').eq('event_id', id),
-    admin.from('audit_log').select('at, who, actor, text, jump_key, data').eq('event_id', id).order('at').order('id'),
   ]);
+  // The audit log of a big event can pass the API's 1000-row cap: read it in pages, so the backup is complete.
+  const log: BackupSource['log'] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from('audit_log').select('at, who, actor, text, jump_key, data').eq('event_id', id).order('at').order('id').range(from, from + 999);
+    if (error) return NextResponse.json({ error: 'No pude leer el historial. No se armó la copia.' }, { status: 500 });
+    log.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
   if (!event) return NextResponse.json({ error: 'La jornada no existe.' }, { status: 404 });
   const ids = [...new Set((jumps ?? []).map((j) => j.pilot_id))];
   const { data: pilots } = await admin.from('pilots').select('*').in('id', ids.length ? ids : ['-']).returns<PilotRow[]>();
@@ -34,7 +41,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     originals[`${f.pilot_id}-${f.task}-${f.round}`] = { name: f.name, size: f.size, sha256: f.sha256, gz: new Uint8Array(await blob.arrayBuffer()), at: f.uploaded_at };
   }
 
-  const backup = buildBackup({ event, pilots: pilots ?? [], jumps: jumps ?? [], reviews: reviews ?? [], tracks: tracks ?? [], originals, log: log ?? [], exportedBy: s.displayName || s.email });
+  const backup = buildBackup({ event, pilots: pilots ?? [], jumps: jumps ?? [], reviews: reviews ?? [], tracks: tracks ?? [], originals, log, exportedBy: s.displayName || s.email });
   const name = `${slug(event.name)}-copia-completa.json`;
   // Kept in the imports bucket under exports/: also a dated backup of the event.
   const path = `exports/${id}/${new Date().toISOString().replace(/[:.]/g, '-')}.json`;

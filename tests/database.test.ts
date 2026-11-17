@@ -198,15 +198,13 @@ describe('role-based permissions (RLS)', () => {
     expect(await count(SERVICE, 'jumps')).toBe(backup.jumps.length * 2);
   });
 
-  test('published event: the public sees results, pilots and tracks, but not the audit log or archive', async () => {
+  test('published event: the API still shows nothing to the public or to pilots (public pages read on the server)', async () => {
     await db.run(SERVICE, `update public.events set published = true where id = 'eabc123'`);
-    expect(await count(ANON, 'events')).toBe(1);
-    expect(await count(ANON, 'jumps')).toBe(backup.jumps.length);
-    expect(await count(ANON, 'tracks')).toBe(backup.jumps.length);
-    expect(await count(ANON, 'pilots')).toBe(backup.pilots.length);
-    expect(await count(ANON, 'archive')).toBe(0);
-    expect(await count(ANON, 'audit_log')).toBe(0);
-    expect(await count(ANON, 'profiles')).toBe(0);
+    for (const who of [ANON, { role: 'authenticated', uid: pilotWithoutRecord } as const]) {
+      for (const t of ['events', 'jumps', 'tracks', 'files', 'reviews', 'pilots', 'archive', 'audit_log']) expect(await count(who, t), t).toBe(0);
+    }
+    // Judge notes, uploaders and reviewers of a published event are not readable with the public key.
+    expect(await db.as(ANON, `select notes, uploaded_by from public.jumps where event_id = 'eabc123'`)).toEqual([]);
     await db.run(SERVICE, `update public.events set published = false where id = 'eabc123'`);
   });
 });

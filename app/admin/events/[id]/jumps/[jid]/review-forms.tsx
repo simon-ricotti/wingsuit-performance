@@ -19,7 +19,7 @@ function useForm(action: Action) { return useActionState<FormState, FormData>(ac
 
 export interface DecisionValues {
   flagged: boolean; flagLabel: string; flag: string;
-  lane: { show: boolean; label: string; value: string; shift: string };
+  lane: { show: boolean; label: string; value: string; shift: string; refs: string[]; refIdx: string };
   sep: { show: boolean; label: string; value: string };
   exit: { show: boolean; label: string; value: string };
   manual: string; notes: string;
@@ -82,13 +82,23 @@ export function DecisionsForm({ event, jump, v }: { event: string; jump: string;
           <span className="sub small">Si cambiás una decisión, se borran las firmas de revisión de este salto.</span>
         </div>
       </form>
-      {v.lane.show && (
+      {(v.lane.show || v.lane.refs.length > 0) && (
         <form action={laneAction} className="stack">
           <Hidden event={event} jump={jump} />
-          <label className="field">Corrección del inicio del carril (s, entre −5 y +5)
-            <span className="row"><input name="shift" inputMode="decimal" defaultValue={v.lane.shift} style={{ width: 90 }} autoComplete="off" />
-              <button type="submit" disabled={lanePending}>{lanePending ? 'Recalculando…' : 'Recalcular carril'}</button></span>
-          </label>
+          <div className="row">
+            {v.lane.refs.length > 0 && (
+              <label className="field">Punto de referencia asignado (5.5.5)
+                <select name="ref" defaultValue={v.lane.refIdx}>
+                  {v.lane.refIdx === '' && <option value="">Sin asignar</option>}
+                  {v.lane.refs.map((n, i) => <option key={i} value={i}>{n}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="field">Corrección del inicio del carril (s, entre −5 y +5)
+              <input name="shift" inputMode="decimal" defaultValue={v.lane.shift} style={{ width: 90 }} autoComplete="off" />
+            </label>
+            <button type="submit" disabled={lanePending}>{lanePending ? 'Recalculando…' : 'Recalcular carril'}</button>
+          </div>
           <Feedback state={laneState} pending={lanePending} ok="Carril recalculado." />
         </form>
       )}

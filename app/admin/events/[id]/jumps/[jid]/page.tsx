@@ -48,6 +48,7 @@ export default async function JumpPage({ params }: { params: Promise<{ id: strin
     flagged, flag: str(j.flagDecision),
     flagLabel: J.gpsRule === 'rejump' || J.exitRule === 'rejump' ? 'Pendiente' : 'Solo aviso, según el perfil',
     lane: { show: j.laneDev != null, value: str(j.laneDecision), shift: str(j.laneShift ?? 0).replace('.', ','),
+      refs: ev.lane ? refs.map((r) => (r as RefPoint & { name?: string }).name ?? '') : [], refIdx: str(j.refIdx),
       label: `Carril: propuesta ${j.lanePen} % (${fmt(j.laneOutside as number, 0)} m afuera)${laneEdge ? ', al límite' : ''}` },
     sep: { show: !!j.sepViolation, value: j.sepApply == null ? '' : j.sepApply ? 'yes' : 'no', label: `Separación: ${fmt(j.sepMin as number, 0)} m de ${name(String(j.sepWith))}` },
     exit: { show: J.door !== 'none', value: str(j.exitPen ?? 0), label: `Salida, según ${J.door === 'fd' ? 'el Flight Director' : 'el cronómetro y el video'}` },

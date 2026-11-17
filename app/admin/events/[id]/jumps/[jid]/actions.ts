@@ -67,20 +67,26 @@ export async function saveDecisions(_prev: FormState, form: FormData): Promise<F
   });
 }
 
-/** Moves the lane start (valDelay 9 s ± shift) and rescores only the lane, from the stored track. */
+/**
+ * Lane correction by the judge: reference point (5.5.5, assigned by the officials, not the pilot) and lane
+ * start (valDelay 9 s ± shift). Rescores only the lane, from the stored track.
+ */
 export async function correctLaneStart(_prev: FormState, form: FormData): Promise<FormState> {
   return run(form, async ({ s, ev, j, key, what }) => {
     const sh = parseFloat(String(form.get('shift') ?? '0').replace(',', '.'));
     if (!isFinite(sh) || Math.abs(sh) > 5) return { error: 'La corrección del inicio del carril tiene que estar entre −5 y +5 s.' };
     const { data: tr } = await createAdminClient().from('tracks').select('packed').eq('event_id', key.p_event).eq('pilot_id', key.p_pilot).eq('task', key.p_task).eq('round', key.p_round).maybeSingle();
-    const refs = (ev.refs ?? []) as { lat: number; lon: number }[];
-    const ref = ev.lane && j.refIdx != null ? refs[j.refIdx as number] : null;
+    const refs = (ev.refs ?? []) as { name: string; lat: number; lon: number }[];
+    const refRaw = form.get('ref');
+    const refIdx = refRaw == null || refRaw === '' ? (j.refIdx as number | null) : +refRaw;
+    if (refIdx != null && !(Number.isInteger(refIdx) && refIdx >= 0 && refIdx < refs.length)) return { error: 'Ese punto de referencia no existe en esta jornada.' };
+    const ref = ev.lane && refIdx != null ? refs[refIdx] : null;
     const sc = tr ? scoreJump(unpackTrack(tr.packed as PackedTrack), { ...eventConfig(ev), valDelay: 9 + sh }, ref) : null;
     if (!sc?.ok || !sc.lane) return { error: 'No pude recalcular el carril de este salto.' };
     const r = await callWrite('update_jump', {
-      ...key, p_set: { lane_shift: sh, t_val: sc.tVal, lane_dev: sc.lane.dev, lane_outside: sc.lane.outside, lane_pen: sc.lane.penalty },
+      ...key, p_set: { lane_shift: sh, ref_idx: refIdx, t_val: sc.tVal, lane_dev: sc.lane.dev, lane_outside: sc.lane.outside, lane_pen: sc.lane.penalty },
       p_clear_reviews: true, p_actor: s.userId, p_who: actorName(s),
-      p_text: `Inicio del carril corregido ${sh >= 0 ? '+' : ''}${String(sh).replace('.', ',')} s en ${what}: ${fmt(sc.lane.outside, 0)} m afuera`,
+      p_text: `Carril corregido en ${what}: punto ${refs[refIdx!]?.name ?? '–'}, inicio ${sh >= 0 ? '+' : ''}${String(sh).replace('.', ',')} s, ${fmt(sc.lane.outside, 0)} m afuera`,
     });
     return r.error ? { error: r.error } : { saved: true };
   });

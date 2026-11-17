@@ -13,8 +13,8 @@ Nov 16, 2026
 
 | Quién | Lee | Escribe |
 | --- | --- | --- |
-| Público (sin login) | Jornadas publicadas: saltos, tracks, pilotos que saltaron en ellas | Nada |
-| Piloto | Lo mismo que el público, más su ficha y su perfil | Nada (la carga de saltos propios es la etapa 6) |
+| Público (sin login) | Nada por la API. Las páginas `/results` (servidor) muestran jornadas publicadas, solo con las columnas de resultados | Nada |
+| Piloto | Su ficha y su perfil por la API; `/account` (servidor) le muestra sus saltos | A través del servidor: sus propios saltos, en jornadas abiertas a pilotos, sin reemplazar uno ya cargado |
 | Juez | Todo, incluidos historial y archivo | A través del servidor: pilotos y carga de saltos |
 | Admin | Todo, incluidos los perfiles de todos | A través del servidor: jornadas, pilotos, saltos, recálculo, roles e importación |
 
