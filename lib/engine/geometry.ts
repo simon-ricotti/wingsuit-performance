@@ -1,9 +1,9 @@
-// Geometría del salto sobre la serie de puntos: búsqueda por tiempo, interpolación, salida,
-// cruces de altura, velocidad horizontal y apertura estimada.
+// Jump geometry over the point series: time lookup, interpolation, exit,
+// altitude crossings, horizontal speed and estimated deployment.
 import type { InterpPoint, TrackPoint } from './types';
 import { projector } from './util';
 
-/** Primer índice con pts[i].t >= t, o -1 si t es posterior al último punto. */
+/** First index with pts[i].t >= t, or -1 if t is after the last point. */
 export function idxAtTime(pts: readonly TrackPoint[], t: number): number {
   let lo = 0, hi = pts.length - 1;
   if (t <= pts[0].t) return 0;
@@ -37,8 +37,8 @@ export interface ExitPoint {
 }
 
 /**
- * Salida: primer instante en que la velocidad vertical llega a 10 m/s y se sostiene 3 s.
- * Es el inicio de la cuenta de 9 s de la ventana de validación (2.2).
+ * Exit: first instant where vertical speed reaches 10 m/s and holds for 3 s.
+ * It starts the 9 s count of the validation window (2.2).
  */
 export function findExit(pts: readonly TrackPoint[], vsIn?: number): ExitPoint | null {
   const vs = vsIn || 10;
@@ -71,7 +71,7 @@ export function findExit(pts: readonly TrackPoint[], vsIn?: number): ExitPoint |
   return { i: idx, t: p.t, alt: p.alt, lat: p.lat, lon: p.lon };
 }
 
-/** Primer cruce descendente de una altura (m MSL), interpolado. 2.2: la ventana empieza y termina en el primer cruce. */
+/** First downward crossing of an altitude (m MSL), interpolated. 2.2: the window starts and ends at the first crossing. */
 export function crossDown(pts: readonly TrackPoint[], from: number, altMsl: number): { i: number; p: InterpPoint } | null {
   for (let i = Math.max(1, from); i < pts.length; i++) {
     if (pts[i].alt <= altMsl) {
@@ -83,7 +83,7 @@ export function crossDown(pts: readonly TrackPoint[], from: number, altMsl: numb
   return null;
 }
 
-/** Velocidad horizontal (m/s) de cada punto, con una ventana de ~1 s. */
+/** Horizontal speed (m/s) at each point, over a ~1 s window. */
 export function groundSpeeds(pts: readonly TrackPoint[]): number[] {
   const gs = new Array<number>(pts.length);
   let lo = 0, hi = 0;
@@ -101,7 +101,7 @@ export function groundSpeeds(pts: readonly TrackPoint[]): number[] {
   return gs;
 }
 
-/** Apertura (estimada): la velocidad total cae por debajo de 25 m/s durante 1 s. */
+/** Deployment (estimated): total speed drops below 25 m/s for 1 s. */
 export function findDeploy(pts: readonly TrackPoint[], fromIdx: number): number | null {
   const gs = groundSpeeds(pts);
   for (let i = fromIdx; i < pts.length; i++) {

@@ -1,20 +1,20 @@
-// Tipos del motor de puntaje. Los nombres de campo son los mismos que guarda la versión vieja
-// (legacy/src/engine.js), para que las copias JSON exportadas se importen sin traducir.
+// Scoring engine types. Field names match what the previous platform stores
+// (legacy/src/engine.js), so exported JSON backups import without renaming.
 
 export type Task = 'time' | 'distance' | 'speed';
 
-/** Punto de GPS ya normalizado. `t` en segundos UNIX, `alt` en m MSL, `vD` en m/s (positivo hacia abajo). */
+/** Normalized GPS point. `t` in UNIX seconds, `alt` in m MSL, `vD` in m/s (positive downward). */
 export interface TrackPoint {
   t: number;
   lat: number;
   lon: number;
   alt: number;
   vD: number;
-  /** SEP50 estimado (m) a partir de hAcc/vAcc; null si el archivo no informa exactitud. */
+  /** Estimated SEP50 (m) from hAcc/vAcc; null if the file reports no accuracy. */
   sep: number | null;
 }
 
-/** Punto interpolado (no lleva `sep`). */
+/** Interpolated point (no `sep`). */
 export interface InterpPoint {
   t: number;
   lat: number;
@@ -43,7 +43,7 @@ export interface ScoreConfig {
   separation: number;
 }
 
-/** Lo que llega desde la jornada: cualquier campo puede faltar o venir como texto. */
+/** Config coming from the event: any field may be missing or arrive as text. */
 export type ScoreConfigInput = Partial<Record<keyof ScoreConfig, number | string | null | undefined>>;
 
 export interface RefPoint {
@@ -103,7 +103,7 @@ export interface Separation {
   t: number;
 }
 
-/** Track compacto (v1): deltas enteros separados por coma. */
+/** Packed track (v1): comma-separated integer deltas. */
 export interface PackedTrack {
   v: 1;
   t0: number;
@@ -117,8 +117,8 @@ export interface PackedTrack {
 }
 
 /**
- * Salto tal como lo guarda la jornada. `standings` y `effectivePenalties` agregan los campos
- * con guion bajo (`_pen`, `_result`, ...) sobre el mismo objeto, igual que la versión vieja.
+ * Jump as stored by the event. `standings` and `effectivePenalties` add underscore fields
+ * (`_pen`, `_result`, ...) on the same object, like the previous platform.
  */
 export interface JumpRecord {
   pilotId: string;

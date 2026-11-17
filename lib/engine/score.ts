@@ -1,4 +1,4 @@
-// Puntaje de un salto y separación entre competidores.
+// Single-jump scoring and separation between competitors.
 import type { LaneResult, RefPoint, ScoreConfig, ScoreConfigInput, ScoreResult, Separation, TrackPoint } from './types';
 import { crossDown, findDeploy, findExit, idxAtTime, pointAtTime } from './geometry';
 import { DEFAULT_CFG, RAD, es, projector, roundHalfUp, vincenty } from './util';
@@ -19,11 +19,11 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
   if (!ex) { res.error = 'No encontré la salida del avión en el archivo (la velocidad vertical nunca llega a ' + cfg.valVs + ' m/s).'; return res; }
   res.tExit = ex.t; res.exitAgl = ex.alt - cfg.elev;
   res.exitLat = ex.lat; res.exitLon = ex.lon;
-  // 2.2 Validation Window: empieza 9 s después de llegar por primera vez a 10 m/s
+  // 2.2 Validation Window: starts 9 s after first reaching 10 m/s
   res.tVal = ex.t + cfg.valDelay;
   const pVal = pointAtTime(pts, res.tVal);
 
-  // 2.2 Competition Window: del primer cruce de 2500 m al primer cruce de 1500 m sobre la elevación del DZ
+  // 2.2 Competition Window: from the first crossing of 2500 m to the first crossing of 1500 m above DZ elevation
   const topMsl = cfg.top + cfg.elev, botMsl = cfg.bottom + cfg.elev;
   if (ex.alt <= topMsl) { res.error = 'La salida (' + Math.round(res.exitAgl) + ' m AGL) fue por debajo del límite superior de la ventana (' + cfg.top + ' m).'; return res; }
   const cTop = crossDown(pts, ex.i, topMsl);
@@ -39,7 +39,7 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
   res.speed = res.time > 0 ? res.distance / res.time * 3.6 : 0;
   res.ok = true;
 
-  // Ventana de validación: desde tVal hasta 20 m debajo de la ventana (2.2)
+  // Validation window: from tVal to 20 m below the competition window (2.2)
   const cEnd = crossDown(pts, cBot.i, botMsl - cfg.valBelow);
   const tValEnd = cEnd ? cEnd.p.t : p2.t;
   let i0 = idxAtTime(pts, res.tVal), i1 = idxAtTime(pts, tValEnd);
@@ -58,12 +58,12 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
   res.maxGap = roundHalfUp(maxGap, 2);
   res.sepMax = sepMax == null ? null : roundHalfUp(sepMax, 1);
   if (sepMax == null) res.flags.push({ code: 'sin_sep', level: 'info', text: 'Sin validación de precisión: el archivo no informa exactitud del GPS.' });
-  // 5.7.4: SEP de 10 m o más en la validación = re-salto
+  // 5.7.4: SEP of 10 m or more during validation = rejump
   else if (sepMax >= cfg.sepLimit) res.flags.push({ code: 'sep', level: 'warn', text: 'SEP máximo ' + es(res.sepMax) + ' m en la ventana de validación (límite ' + cfg.sepLimit + ' m). En competencia corresponde re-salto (5.7.4).' });
-  // 3.1.1: al menos 5 Hz
+  // 3.1.1: at least 5 Hz
   if (res.hz < cfg.minHz - 0.05) res.flags.push({ code: 'hz', level: 'warn', text: 'El GPS registró a ' + es(res.hz) + ' Hz; FAI exige al menos ' + cfg.minHz + ' Hz (3.1.1).' });
   else if (maxGap > 1) res.flags.push({ code: 'gap', level: 'warn', text: 'Hay un hueco de ' + es(res.maxGap) + ' s sin datos dentro de la ventana de validación.' });
-  // 5.4.6 y 5.4.5: altura de salida
+  // 5.4.6 and 5.4.5: exit altitude
   if (res.exitAgl < cfg.exitMin) res.flags.push({ code: 'exit_low', level: 'warn', text: 'Salida a ' + Math.round(res.exitAgl) + ' m AGL, por debajo del mínimo de ' + cfg.exitMin + ' m (5.4.6).' });
   if (res.exitAgl > cfg.exitMax) res.flags.push({ code: 'exit_high', level: 'warn', text: 'Salida a ' + Math.round(res.exitAgl) + ' m AGL, por encima del máximo de ' + cfg.exitMax + ' m (5.4.5).' });
 
@@ -72,7 +72,7 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
   }
   res.tDeploy = findDeploy(pts, cBot.i);
 
-  // Carril designado (2.2, 5.6.2): 600 m centrado en la recta desde el inicio de la validación al punto de referencia
+  // Designated lane (2.2, 5.6.2): 600 m centred on the line from validation start to the reference point
   res.lane = null;
   if (ref && isFinite(ref.lat) && isFinite(ref.lon) && pVal) {
     const pr = projector(pVal.lat, pVal.lon);
@@ -88,7 +88,7 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
       if (ib < 0) ib = pts.length;
       for (let n = i0; n < ib; n++) check(pts[n]);
       check(p2);
-      // 5.6.2: se mide en ángulo recto al borde del carril (300 m del eje)
+      // 5.6.2: measured at right angles to the lane edge (300 m from the centreline)
       const outside = Math.max(0, dev - cfg.laneWidth / 2);
       let pen = 0;
       if (outside > 300) pen = 50; //        5.6.2.3
@@ -104,7 +104,7 @@ export function scoreJump(pts: readonly TrackPoint[], cfgIn?: ScoreConfigInput |
   return res;
 }
 
-/** Distancia mínima entre dos saltos sincronizados por hora GPS, de la validación a la apertura (5.6.3). */
+/** Minimum distance between two jumps synced by GPS time, from validation to deployment (5.6.3). */
 export function minSeparation(ptsA: readonly TrackPoint[], sA: ScoreResult, ptsB: readonly TrackPoint[], sB: ScoreResult): Separation | null {
   if (!sA.ok || !sB.ok) return null;
   const t0 = Math.max(sA.tVal!, sB.tVal!);

@@ -3,26 +3,26 @@ import type { ScoreConfig, Task } from './types';
 export const TASKS: readonly Task[] = ['time', 'distance', 'speed'];
 
 export const DEFAULT_CFG: Readonly<ScoreConfig> = {
-  elev: 0, //          elevación del DZ, m MSL
-  top: 2500, //        límite superior de la ventana, m AGL (2.2)
-  bottom: 1500, //     límite inferior, m AGL (2.2)
+  elev: 0, //          DZ elevation, m MSL
+  top: 2500, //        window top, m AGL (2.2)
+  bottom: 1500, //     window bottom, m AGL (2.2)
   exitMin: 3200, //    5.4.6
   exitMax: 3353, //    5.4.5
   laneWidth: 600, //   2.2 Designated Lane
-  valDelay: 9, //      s después de alcanzar valVs (2.2 Validation Window)
+  valDelay: 9, //      s after reaching valVs (2.2 Validation Window)
   valVs: 10, //        m/s (2.2)
-  valBelow: 20, //     la validación termina 20 m debajo de la ventana (2.2)
+  valBelow: 20, //     validation ends 20 m below the window (2.2)
   sepLimit: 10, //     SEP < 10 m (3.1.1 / 5.7.4)
   minHz: 5, //         3.1.1
   separation: 150, //  5.6.3
 };
 
-/** Número con coma decimal (es-AR). */
+/** Number with decimal comma (es-AR). */
 export function es(n: number | string | null | undefined): string {
   return String(n).replace('.', ',');
 }
 
-/** Redondeo de medios hacia arriba (5.10.1, 5.10.4). */
+/** Round half up (5.10.1, 5.10.4). */
 export function roundHalfUp(x: number, d?: number): number {
   const m = Math.pow(10, d || 0);
   return Math.floor(x * m + 0.5 + 1e-9) / m;
@@ -30,7 +30,7 @@ export function roundHalfUp(x: number, d?: number): number {
 
 export const RAD = Math.PI / 180;
 
-/** Distancia geodésica WGS84 (Vincenty inversa), en metros (2.2 Distance). */
+/** WGS84 geodesic distance (inverse Vincenty), in metres (2.2 Distance). */
 export function vincenty(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const a = 6378137, b = 6356752.314245, f = 1 / 298.257223563;
   const L = (lon2 - lon1) * RAD;
@@ -62,7 +62,7 @@ export function vincenty(lat1: number, lon1: number, lat2: number, lon2: number)
 
 export type Projector = (lat: number, lon: number) => [number, number];
 
-/** Proyección local (este, norte) en metros alrededor de un origen. */
+/** Local projection (east, north) in metres around an origin. */
 export function projector(lat0: number, lon0: number): Projector {
   const a = 6378137, e2 = 0.00669437999014;
   const s = Math.sin(lat0 * RAD), w = 1 - e2 * s * s;

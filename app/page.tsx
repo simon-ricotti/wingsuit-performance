@@ -1,5 +1,5 @@
-// Página mínima: muestra los parámetros con los que puntúa el motor (lib/engine), con su artículo
-// del reglamento FAI 2026. Las pantallas reales llegan en la etapa 4.
+// Minimal page: lists the parameters the engine (lib/engine) scores with, each with its FAI 2026
+// rule article. The real screens arrive in stage 4. UI text is in Rioplatense Spanish.
 import { DEFAULT_CFG } from '@/lib/engine';
 
 const num = (n: number) => n.toLocaleString('es-AR');

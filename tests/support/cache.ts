@@ -1,5 +1,5 @@
-// Descargas con caché local (.cache/, ignorado por git). Los datos de Skyderby no se copian al repo:
-// su licencia (O'Saasy) no es una licencia abierta estándar, así que se bajan al correr los tests.
+// Downloads with a local cache (.cache/, git-ignored). Skyderby data is not copied into the repo:
+// its license (O'Saasy) is not a standard open license, so it is downloaded when the tests run.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ async function fetchWithRetry(url: string, tries = 4): Promise<string> {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json, text/plain, */*' } });
       if (res.ok) return await res.text();
-      lastErr = new Error(`HTTP ${res.status} en ${url}`);
+      lastErr = new Error(`HTTP ${res.status} at ${url}`);
       if (res.status === 404) break;
     } catch (e) {
       lastErr = e;
@@ -23,18 +23,18 @@ async function fetchWithRetry(url: string, tries = 4): Promise<string> {
     await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
   }
   throw new Error(
-    `No pude descargar ${url}: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}. ` +
-      'Hace falta conexión la primera vez; después se usa la copia en .cache/.',
+    `Could not download ${url}: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}. ` +
+      'A connection is needed the first time; after that the copy in .cache/ is used.',
   );
 }
 
-/** Devuelve el contenido de `url`, guardado en `.cache/<rel>`. Solo descarga si no está en caché. */
+/** Returns the content of `url`, stored at `.cache/<rel>`. Downloads only on a cache miss. */
 export async function cachedText(rel: string, url: string): Promise<string> {
   const file = join(CACHE_DIR, rel);
   if (existsSync(file)) return readFileSync(file, 'utf8');
   const text = await fetchWithRetry(url);
   mkdirSync(dirname(file), { recursive: true });
-  // Nombre temporal único: varios archivos de test pueden bajar lo mismo a la vez.
+  // Unique temp name: several test files may download the same thing at once.
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   writeFileSync(tmp, text);
   renameSync(tmp, file);
@@ -45,7 +45,7 @@ export async function cachedJson<T>(rel: string, url: string): Promise<T> {
   return JSON.parse(await cachedText(rel, url)) as T;
 }
 
-/** Corre `fn` sobre `items` con a lo sumo `limit` tareas en paralelo (para no saturar la API). */
+/** Runs `fn` over `items` with at most `limit` tasks in parallel (to avoid hammering the API). */
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
   let next = 0;

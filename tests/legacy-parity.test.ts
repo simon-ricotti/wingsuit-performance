@@ -1,6 +1,6 @@
-// Paridad con el motor viejo: misma entrada → exactamente la misma salida (toStrictEqual, sin tolerancias).
-// Cubre la lectura de cada formato, el puntaje con y sin punto de referencia, el track compacto,
-// la separación entre competidores y la clasificación con datos al azar.
+// Parity with the legacy engine: same input → exactly the same output (toStrictEqual, no tolerances).
+// Covers parsing every format, scoring with and without a reference point, the packed track,
+// separation between competitors and standings with random data.
 import { beforeAll, describe, expect, test } from 'vitest';
 import * as W from '../lib/engine';
 import type { JumpRecord, TrackPoint } from '../lib/engine';
@@ -12,7 +12,7 @@ beforeAll(async () => { files = await loadAllFixtures(); });
 
 const minAlt = (pts: TrackPoint[]) => pts.reduce((m, p) => Math.min(m, p.alt), Infinity);
 
-/** Puntos de referencia alrededor de la salida, a distintas distancias y rumbos, para forzar los cuatro niveles de carril. */
+/** Reference points around the exit, at various distances and bearings, to hit all four lane levels. */
 function refsAround(score: W.ScoreResult) {
   if (!score.ok) return [null];
   const lat0 = score.exitLat!, lon0 = score.exitLon!;
@@ -41,7 +41,7 @@ function sweepRefs(score: W.ScoreResult): W.RefPoint[] {
   return out;
 }
 
-describe('lectura de archivos', () => {
+describe('file parsing', () => {
   test.each(FIXTURES)('%s', (name) => {
     let a: unknown, b: unknown, ea: string | null = null, eb: string | null = null;
     try { a = W.parseTrack(files[name], name); } catch (e) { ea = (e as Error).message; }
@@ -50,8 +50,8 @@ describe('lectura de archivos', () => {
     expect(a).toStrictEqual(b);
   });
 
-  // Formatos que no están entre los fixtures: se arman a partir de un track real.
-  test('GPX, KML, CSV genérico con ; y sin velD, Deep and Steep, FlySight 2 sin $COL, BOM, errores', () => {
+  // Formats not among the fixtures: built from a real track.
+  test('GPX, KML, generic CSV with ; and no velD, Deep and Steep, FlySight 2 without $COL, BOM, errors', () => {
     const pts = W.parseTrack(files['flysight.csv']).pts.slice(0, 3000);
     const iso = (t: number) => new Date(t * 1000).toISOString();
     const variants: Record<string, string> = {
@@ -61,14 +61,14 @@ describe('lectura de archivos', () => {
       kml: '<?xml version="1.0"?><kml xmlns:gx="http://www.google.com/kml/ext/2.2"><Document><gx:Track>' +
         pts.map((p) => `<when>${iso(p.t)}</when>`).join('') + pts.map((p) => `<gx:coord>${p.lon} ${p.lat} ${p.alt}</gx:coord>`).join('') +
         '</gx:Track></Document></kml>',
-      csvPuntoYComa: 'Timestamp;Latitude;Longitude;Altitude (m)\n' + pts.map((p) => [p.t * 1000, p.lat, p.lon, p.alt].join(';')).join('\n'),
+      csvSemicolon: 'Timestamp;Latitude;Longitude;Altitude (m)\n' + pts.map((p) => [p.t * 1000, p.lat, p.lon, p.alt].join(';')).join('\n'),
       deepSteep: '﻿time,lat,lon,hMSL,velN,velE,velD,hAcc,vAcc,sAcc,headAcc\n' +
         pts.map((p) => [iso(p.t), p.lat, p.lon, p.alt, 0, 0, p.vD, 1.5, 2.5, 0.3, 1].join(',')).join('\r\n'),
-      flysight2SinCol: '$FLYS,1\n' + pts.map((p) => '$GNSS,' + [iso(p.t), p.lat, p.lon, p.alt, 0, 0, p.vD, 2, 3, 0.4, 12].join(',')).join('\n'),
-      sinEncabezado: pts.map((p) => [iso(p.t), p.lat, p.lon, p.alt, 0, 0, p.vD, 2, 3, 0.4, 12].join(',')).join('\n'),
-      desordenadoYDuplicado: 'time,lat,lon,alt\n' + pts.slice().reverse().concat(pts.slice(0, 50)).map((p) => [p.t, p.lat, p.lon, p.alt].join(',')).join('\n'),
-      irreconocible: 'hola,mundo\n1,2\n',
-      pocosPuntos: 'time,lat,lon,alt\n' + pts.slice(0, 10).map((p) => [p.t, p.lat, p.lon, p.alt].join(',')).join('\n'),
+      flysight2NoCol: '$FLYS,1\n' + pts.map((p) => '$GNSS,' + [iso(p.t), p.lat, p.lon, p.alt, 0, 0, p.vD, 2, 3, 0.4, 12].join(',')).join('\n'),
+      noHeader: pts.map((p) => [iso(p.t), p.lat, p.lon, p.alt, 0, 0, p.vD, 2, 3, 0.4, 12].join(',')).join('\n'),
+      unorderedAndDuplicated: 'time,lat,lon,alt\n' + pts.slice().reverse().concat(pts.slice(0, 50)).map((p) => [p.t, p.lat, p.lon, p.alt].join(',')).join('\n'),
+      unrecognized: 'hello,world\n1,2\n',
+      tooFewPoints: 'time,lat,lon,alt\n' + pts.slice(0, 10).map((p) => [p.t, p.lat, p.lon, p.alt].join(',')).join('\n'),
     };
     for (const [name, text] of Object.entries(variants)) {
       let a: unknown, b: unknown, ea: string | null = null, eb: string | null = null;
@@ -80,7 +80,7 @@ describe('lectura de archivos', () => {
   });
 
   test('parseTime', () => {
-    // parseTime no se exportaba en la versión vieja: su paridad queda cubierta por los formatos de arriba.
+    // parseTime was not exported by the legacy engine: its parity is covered by the formats above.
     expect(W.parseTime('1714557600250')).toBe(1714557600.25);
     expect(W.parseTime('2024-05-01 10:00:00')).toBe(1714557600);
     expect(W.parseTime('2024-05-01T13:00:00.250+03:00')).toBe(1714557600.25);
@@ -90,7 +90,7 @@ describe('lectura de archivos', () => {
   });
 });
 
-describe('puntaje del salto', () => {
+describe('jump scoring', () => {
   test.each(FIXTURES)('%s: scoreJump, groundSpeeds, findExit y pointAtTime', (name) => {
     let pts: TrackPoint[];
     try { pts = W.parseTrack(files[name], name).pts; } catch { return; }
@@ -111,8 +111,8 @@ describe('puntaje del salto', () => {
         expect(W.scoreJump(pts, cfg, ref), JSON.stringify({ cfg, ref })).toStrictEqual(legacy.scoreJump(pts, cfg, ref));
       }
     }
-    // Barrido fino de rumbos alrededor de la recta salida → fin de ventana: el desvío varía en forma
-    // continua y pasa por los bordes de cada nivel de penalidad (0, 150 y 300 m fuera del carril).
+    // Fine bearing sweep around the exit → window-end line: the deviation varies continuously
+    // and crosses the edges of each penalty level (0, 150 and 300 m outside the lane).
     const base = W.scoreJump(pts, configs[0]);
     if (base.ok) {
       for (const ref of sweepRefs(base)) {
@@ -129,17 +129,17 @@ describe('puntaje del salto', () => {
     }
   });
 
-  test('el barrido de carril cubrió los bordes de cada nivel de penalidad', () => {
+  test('the lane sweep covered the edges of every penalty level', () => {
     const near = (x: number, lo: number, hi: number) => laneOutsides.some((o) => o > lo && o < hi);
-    expect(near(0, -1, 0.0001), 'dentro del carril').toBe(true);
-    expect(near(0, 0, 10), 'apenas fuera').toBe(true);
-    expect(near(0, 135, 150), 'justo debajo de 150 m').toBe(true);
-    expect(near(0, 150, 165), 'justo encima de 150 m').toBe(true);
-    expect(near(0, 285, 300), 'justo debajo de 300 m').toBe(true);
-    expect(near(0, 300, 315), 'justo encima de 300 m').toBe(true);
+    expect(near(0, -1, 0.0001), 'inside the lane').toBe(true);
+    expect(near(0, 0, 10), 'just outside').toBe(true);
+    expect(near(0, 135, 150), 'just below 150 m').toBe(true);
+    expect(near(0, 150, 165), 'just above 150 m').toBe(true);
+    expect(near(0, 285, 300), 'just below 300 m').toBe(true);
+    expect(near(0, 300, 315), 'just above 300 m').toBe(true);
   });
 
-  test.each(FIXTURES)('%s: track compacto (trim, pack, unpack y re-puntaje)', (name) => {
+  test.each(FIXTURES)('%s: packed track (trim, pack, unpack and rescoring)', (name) => {
     let pts: TrackPoint[];
     try { pts = W.parseTrack(files[name], name).pts; } catch { return; }
     const cfg = { elev: name.includes('Ravenna') ? 0 : minAlt(pts) };
@@ -147,13 +147,13 @@ describe('puntaje del salto', () => {
     const trimmed = W.trimTrack(pts, sc);
     expect(trimmed).toStrictEqual(legacy.trimTrack(pts, sc));
     const packed = W.packTrack(trimmed);
-    expect(JSON.stringify(packed)).toBe(JSON.stringify(legacy.packTrack(trimmed))); // mismos bytes: mismas huellas
+    expect(JSON.stringify(packed)).toBe(JSON.stringify(legacy.packTrack(trimmed))); // same bytes: same hashes
     const back = W.unpackTrack(packed);
     expect(back).toStrictEqual(legacy.unpackTrack(packed));
     expect(W.scoreJump(back, cfg)).toStrictEqual(legacy.scoreJump(back, cfg));
   });
 
-  test('separación entre competidores (5.6.3)', () => {
+  test('separation between competitors (5.6.3)', () => {
     const pts = W.parseTrack(files['flysight.csv']).pts;
     const cfg = { elev: minAlt(pts) };
     const sA = W.scoreJump(pts, cfg);
@@ -164,7 +164,7 @@ describe('puntaje del salto', () => {
     }
   });
 
-  test('utilidades: vincenty, projector, roundHalfUp', () => {
+  test('utilities: vincenty, projector, roundHalfUp', () => {
     const pairs = [[-33.0, -61.0, -33.02, -60.97], [49.44, 17.13, 49.47, 17.17], [0, 0, 0, 0], [10, 10, 10, 10.0000001], [-89, 0, 89, 179]];
     for (const [a, b, c, d] of pairs) {
       expect(W.vincenty(a, b, c, d)).toBe(legacy.vincenty(a, b, c, d));
@@ -178,7 +178,7 @@ describe('puntaje del salto', () => {
   });
 });
 
-// ---------- clasificación con datos al azar ----------
+// ---------- standings with random data ----------
 function prng(seed: number) {
   return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 }
@@ -194,12 +194,12 @@ function randomEvent(seed: number): { jumps: JumpRecord[]; pilots: string[]; tie
   for (let r = 1; r <= rounds; r++) {
     for (const task of ['time', 'distance', 'speed']) {
       for (const p of pilots) {
-        if (rnd() < 0.1) continue; // no saltó
+        if (rnd() < 0.1) continue; // did not jump
         const j: JumpRecord = {
           pilotId: p, task, round: rnd() < 0.2 ? String(r) : r, ok: rnd() > 0.05, tExit: (tExit += 1 + rnd() * 50),
           time: 60 + Math.round(rnd() * 400) / 10, distance: 2000 + rnd() * 2000, speed: 150 + Math.round(rnd() * 1200) / 10,
         };
-        // Empates forzados para probar puestos compartidos
+        // Forced ties to exercise shared ranks
         if (rnd() < 0.15) { j.time = 80; j.distance = 3000; j.speed = 200; }
         if (rnd() < 0.25) { j.lanePen = pick([10, 20, 50]); j.laneOutside = Math.round(rnd() * 5000) / 10; }
         if (rnd() < 0.1) j.laneDecision = pick(['', '0', 10, '20', 50, null]);
@@ -207,7 +207,7 @@ function randomEvent(seed: number): { jumps: JumpRecord[]; pilots: string[]; tie
         if (rnd() < 0.05) { j.sepViolation = true; j.sepMin = 120; if (rnd() < 0.5) j.sepApply = false; }
         if (rnd() < 0.05) j.exitPen = pick([50, '100', '', 0]);
         if (rnd() < 0.04) j.void = true;
-        if (rnd() < 0.02) j.task = 'otra';
+        if (rnd() < 0.02) j.task = 'other';
         jumps.push(j);
       }
     }
@@ -217,23 +217,23 @@ function randomEvent(seed: number): { jumps: JumpRecord[]; pilots: string[]; tie
     tiebreak = { task: pick(['time', 'distance', 'speed']) };
     for (const p of pilots.slice(0, 3)) jumps.push({ pilotId: p, task: tiebreak.task, round: 0, ok: true, tExit: (tExit += 10), time: 70 + rnd() * 10, distance: 3000 + rnd() * 100, speed: 220 });
   }
-  if (rnd() < 0.3) jumps.push({ pilotId: 'fuera-de-lista', task: 'time', round: 1, ok: true, time: 81, tExit: 1 });
-  return { jumps, pilots: rnd() < 0.8 ? pilots.concat(['sin-saltos']) : [], tiebreak };
+  if (rnd() < 0.3) jumps.push({ pilotId: 'not-in-list', task: 'time', round: 1, ok: true, time: 81, tExit: 1 });
+  return { jumps, pilots: rnd() < 0.8 ? pilots.concat(['no-jumps']) : [], tiebreak };
 }
 
-describe('clasificación', () => {
-  test('500 jornadas al azar dan exactamente lo mismo', () => {
+describe('standings', () => {
+  test('500 random events give exactly the same', () => {
     for (let seed = 1; seed <= 500; seed++) {
       const ev = randomEvent(seed);
       const a = structuredClone(ev.jumps), b = structuredClone(ev.jumps);
       const sa = W.standings(a, ev.pilots.length ? ev.pilots : null, { tiebreak: ev.tiebreak });
       const sb = legacy.standings(b, ev.pilots.length ? ev.pilots : null, { tiebreak: ev.tiebreak });
-      expect(sa, 'semilla ' + seed).toStrictEqual(sb);
-      expect(a, 'semilla ' + seed).toStrictEqual(b); // mismas marcas _pen, _result, _points...
+      expect(sa, 'seed ' + seed).toStrictEqual(sb);
+      expect(a, 'seed ' + seed).toStrictEqual(b); // same _pen, _result, _points... marks
     }
   });
 
-  test('effectivePenalties y finalResult', () => {
+  test('effectivePenalties and finalResult', () => {
     for (let seed = 1000; seed < 1100; seed++) {
       const ev = randomEvent(seed);
       const a = structuredClone(ev.jumps), b = structuredClone(ev.jumps);

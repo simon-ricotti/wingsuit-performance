@@ -1,7 +1,7 @@
-// Track compacto: recorte alrededor del salto y codificación por deltas para guardar y re-puntuar.
+// Packed track: trimmed around the jump and delta-encoded for storage and rescoring.
 import type { PackedTrack, ScoreResult, TrackPoint } from './types';
 
-/** Recorta desde 15 s antes de la salida hasta 8 s después de la apertura (o 30 s después de la ventana). */
+/** Trims from 15 s before exit to 8 s after deployment (or 30 s after the window). */
 export function trimTrack(pts: readonly TrackPoint[], score: ScoreResult): TrackPoint[] {
   const t0 = (score.tExit || pts[0].t) - 15;
   const t1 = score.ok ? (score.tDeploy != null ? score.tDeploy + 8 : score.tBot! + 30) : pts[pts.length - 1].t;

@@ -1,5 +1,5 @@
-// Casos conocidos del motor: los tracks de prueba de Skyderby, el redondeo y la clasificación
-// (lo que probaba legacy/src/test.js) y la jornada de ejemplo que arma legacy/src/build.js.
+// Known engine cases: Skyderby test tracks, rounding and standings (what legacy/src/test.js
+// covered) and the demo event built by legacy/src/build.js.
 import { beforeAll, describe, expect, test } from 'vitest';
 import * as W from '../lib/engine';
 import type { JumpRecord, TrackPoint } from '../lib/engine';
@@ -11,28 +11,28 @@ beforeAll(async () => { files = await loadAllFixtures(); });
 
 const minAlt = (pts: TrackPoint[]) => pts.reduce((m, p) => Math.min(m, p.alt), Infinity);
 
-describe('tracks de prueba de Skyderby', () => {
-  test('Ravenna, ventana 3000–2000 m sobre el nivel del mar: igual a Skyderby', () => {
+describe('Skyderby test tracks', () => {
+  test('Ravenna, window 3000–2000 m above sea level: matches Skyderby', () => {
     const tr = W.parseTrack(files['13-31-51_Ravenna.CSV'], 'Ravenna');
     expect(tr.device).toBe('FlySight');
     const s = W.scoreJump(tr.pts, { elev: 0, top: 3000, bottom: 2000 });
     expect(s.ok).toBe(true);
-    // Skyderby: tiempo 92,16 s, distancia 3410,8 m, velocidad 133,2 km/h
+    // Skyderby: time 92.16 s, distance 3410.8 m, speed 133.2 km/h
     expect(s.time!).toBeCloseTo(92.16, 1);
     expect(W.roundHalfUp(s.distance!, 1)).toBe(3410.8);
     expect(W.roundHalfUp(s.speed!, 1)).toBe(133.2);
   });
 
-  test('Csaba, sin lugar (suelo = altura mínima registrada, como Skyderby): igual a Skyderby', () => {
+  test('Csaba, no place (ground = lowest recorded altitude, as Skyderby does): matches Skyderby', () => {
     const tr = W.parseTrack(files['2014-Csaba-Round-1.CSV'], 'Csaba');
     const s = W.scoreJump(tr.pts, { elev: minAlt(tr.pts), top: 3000, bottom: 2000 });
-    // Skyderby: tiempo 38,5 s, distancia 2110 m, velocidad 197,4 km/h (valores redondeados por Skyderby)
+    // Skyderby: time 38.5 s, distance 2110 m, speed 197.4 km/h (values rounded by Skyderby)
     expect(W.roundHalfUp(s.time!, 1)).toBe(38.5);
     expect(Math.abs(s.distance! - 2110)).toBeLessThan(1);
     expect(Math.abs(s.speed! - 197.4)).toBeLessThan(0.15);
   });
 
-  // Valores de la versión vieja (salida de `node legacy/src/test.js`), ventana 2500–1500 m sobre la altura mínima.
+  // Legacy values (output of `node legacy/src/test.js`), window 2500–1500 m above the lowest altitude.
   test.each([
     ['flysight.csv', 'FlySight', 32.75, 1080.5, 118.8, 10, 'exit_high'],
     ['fs2-track.csv', 'FlySight 2', 82.51, 3673.3, 160.3, 5, 'sep,exit_high'],
@@ -51,14 +51,14 @@ describe('tracks de prueba de Skyderby', () => {
     expect(s.speed!.toFixed(1)).toBe(speed.toFixed(1));
     expect(s.hz).toBe(hz);
     expect(s.flags.map((f) => f.code).join(',')).toBe(flags);
-    // Re-puntuar desde el track compacto da lo mismo
+    // Rescoring from the packed track gives the same
     const s2 = W.scoreJump(W.unpackTrack(W.packTrack(W.trimTrack(tr.pts, s))), { elev: minAlt(tr.pts) });
     expect(s2.time!.toFixed(2)).toBe(time.toFixed(2));
     expect(s2.distance!.toFixed(1)).toBe(distance.toFixed(1));
     expect(s2.speed!.toFixed(1)).toBe(speed.toFixed(1));
   });
 
-  test('GPX con salida por debajo de la ventana: error explicado', () => {
+  test('GPX with exit below the window: explained error', () => {
     const tr = W.parseTrack(files['one_track.gpx'], 'one_track.gpx');
     expect(tr.device).toBe('GPX');
     const s = W.scoreJump(tr.pts, { elev: minAlt(tr.pts) });
@@ -67,8 +67,8 @@ describe('tracks de prueba de Skyderby', () => {
   });
 });
 
-describe('redondeo y clasificación (5.10)', () => {
-  test('medios hacia arriba (2.1, 5.10.1)', () => {
+describe('rounding and standings (5.10)', () => {
+  test('round half up (2.1, 5.10.1)', () => {
     expect(W.roundHalfUp(23.5, 0)).toBe(24);
     expect(W.roundHalfUp(1.005, 2)).toBe(1.01);
     expect(W.roundHalfUp(92.15, 1)).toBe(92.2);
@@ -79,7 +79,7 @@ describe('redondeo y clasificación (5.10)', () => {
     tExit: round * 10 + ['time', 'distance', 'speed'].indexOf(task), ...extra,
   });
 
-  test('porcentaje del mejor, promedio por tarea, segunda vez fuera >300 m = cero', () => {
+  test('percentage of best, average per task, second time >300 m outside = zero', () => {
     const st = W.standings([
       J('a', 'time', 1, 80), J('b', 'time', 1, 60), J('a', 'distance', 1, 4000), J('b', 'distance', 1, 4400.4),
       J('a', 'speed', 1, 250, { lanePen: 50, laneOutside: 320 }), J('b', 'speed', 1, 200),
@@ -95,16 +95,16 @@ describe('redondeo y clasificación (5.10)', () => {
     expect(st.rounds).toEqual({ time: [1, 2], distance: [1], speed: [1] });
   });
 
-  test('empate: desempate en ronda 0 y puesto compartido (5.10.6)', () => {
+  test('tie: tiebreak in round 0 and shared rank (5.10.6)', () => {
     const base = () => [J('a', 'time', 1, 80), J('b', 'time', 1, 80), J('c', 'time', 1, 40)];
-    const sinDesempate = W.standings(base(), null);
-    expect(sinDesempate.rows.map((r) => [r.pilotId, r.rank])).toEqual([['a', 1], ['b', 1], ['c', 3]]);
-    const conDesempate = W.standings([...base(), J('a', 'time', 0, 70), J('b', 'time', 0, 75)], null, { tiebreak: { task: 'time' } });
-    expect(conDesempate.rows.map((r) => [r.pilotId, r.rank, r.tb])).toEqual([['b', 1, 75], ['a', 2, 70], ['c', 3, null]]);
-    expect(conDesempate.tiebreak).toHaveLength(2);
+    const noTiebreak = W.standings(base(), null);
+    expect(noTiebreak.rows.map((r) => [r.pilotId, r.rank])).toEqual([['a', 1], ['b', 1], ['c', 3]]);
+    const withTiebreak = W.standings([...base(), J('a', 'time', 0, 70), J('b', 'time', 0, 75)], null, { tiebreak: { task: 'time' } });
+    expect(withTiebreak.rows.map((r) => [r.pilotId, r.rank, r.tb])).toEqual([['b', 1, 75], ['a', 2, 70], ['c', 3, null]]);
+    expect(withTiebreak.tiebreak).toHaveLength(2);
   });
 
-  test('decisiones del juez: manual manda, anulado no cuenta, separación y salida suman hasta 100 %', () => {
+  test('judge decisions: manual wins, void does not count, separation and exit add up to 100 %', () => {
     const js = [
       J('a', 'time', 1, 100, { lanePen: 20, laneOutside: 160, penManual: '5' }),
       J('b', 'time', 1, 100, { lanePen: 20, laneOutside: 160, laneDecision: '10' }),
@@ -119,13 +119,13 @@ describe('redondeo y clasificación (5.10)', () => {
   });
 });
 
-describe('jornada de ejemplo (la que trae la versión vieja, legacy/src/build.js)', () => {
+describe('demo event (the one shipped by the legacy platform, legacy/src/build.js)', () => {
   const DEMO = [
-    ['Piloto A', 'fs2-track.csv'], ['Piloto B', 'cyber_eye.csv'], ['Piloto C', 'distance_3107.csv'],
-    ['Piloto D', 'flysight2_2762_noisy_climb.csv'], ['Piloto E', '13-31-51_Ravenna.CSV'],
+    ['Pilot A', 'fs2-track.csv'], ['Pilot B', 'cyber_eye.csv'], ['Pilot C', 'distance_3107.csv'],
+    ['Pilot D', 'flysight2_2762_noisy_climb.csv'], ['Pilot E', '13-31-51_Ravenna.CSV'],
   ] as const;
 
-  // Misma construcción que build.js, con el motor que se le pase.
+  // Same construction as build.js, with whichever engine is passed in.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildDemo(E: any) {
     return DEMO.map(([name, f]) => {
@@ -138,18 +138,18 @@ describe('jornada de ejemplo (la que trae la versión vieja, legacy/src/build.js
       const pts = E.trimTrack(tr.pts, sc), out: TrackPoint[] = [];
       let last = -1;
       pts.forEach((p: TrackPoint) => { if (p.t - last >= 0.19) { out.push(p); last = p.t; } });
-      return { name, device: tr.device, file: 'track de prueba', track: E.packTrack(out) };
+      return { name, device: tr.device, file: 'test track', track: E.packTrack(out) };
     });
   }
 
-  test('los tracks compactos son byte a byte iguales', () => {
+  test('packed tracks are byte-for-byte identical', () => {
     expect(JSON.stringify(buildDemo(W))).toBe(JSON.stringify(buildDemo(legacy)));
   });
 
-  test('misma clasificación (3 rondas por tarea con los 5 pilotos)', () => {
+  test('same standings (3 rounds per task with the 5 pilots)', () => {
     const demo = buildDemo(W);
     const jumps: JumpRecord[] = [];
-    // Cada piloto vuela su track en cada tarea y ronda, con un carril que lo penaliza distinto según la ronda.
+    // Each pilot flies their track in every task and round, with a lane that penalizes differently per round.
     demo.forEach((d, i) => {
       const pts = W.unpackTrack(d.track);
       W.TASKS.forEach((task, ti) => {

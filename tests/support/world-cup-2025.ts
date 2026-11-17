@@ -1,6 +1,6 @@
-// Datos de la 5.ª Copa del Mundo FAI de Wingsuit Flying (Prostějov, 2025), competencia 619 de Skyderby.
-// Los resultados por salto salen del scoreboard + /results/{id} (la ruta /results de la lista no existe
-// en la API actual), y los puntos de GPS de /tracks/{trackId}/points.
+// Data from the 5th FAI Wingsuit Flying World Cup (Prostějov, 2025), Skyderby competition 619.
+// Per-jump results come from the scoreboard + /results/{id} (the /results list route no longer exists
+// in the current API), and GPS points from /tracks/{trackId}/points.
 import type { Task, TrackPoint } from '../../lib/engine';
 import { cachedJson, mapLimit } from './cache';
 
@@ -40,17 +40,17 @@ interface ApiPoint {
   latitude: string | number;
   longitude: string | number;
   abs_altitude: number;
-  v_speed: number; // km/h, positivo hacia abajo
+  v_speed: number; // km/h, positive downward
   sep50: number | null;
 }
 
-export interface CopaJump {
+export interface WorldCupJump {
   resultId: number;
   trackId: number;
   competitor: string;
   task: Task;
   round: number;
-  /** Resultado oficial sin redondear y redondeado como lo publica Skyderby. */
+  /** Official result, unrounded and rounded as Skyderby publishes it. */
   official: number;
   officialFormatted: string;
   penaltySize: number;
@@ -59,23 +59,23 @@ export interface CopaJump {
   ref: { name: string; lat: number; lon: number } | null;
 }
 
-/** Clasificación oficial por categoría, como la publica el scoreboard. */
-export interface CopaGroup {
+/** Official standings per category, as published on the scoreboard. */
+export interface WorldCupGroup {
   category: string;
   rows: { competitor: string; rank: number; totalPoints: number }[];
 }
 
-export interface Copa2025 {
+export interface WorldCup2025 {
   name: string;
-  groups: CopaGroup[];
+  groups: WorldCupGroup[];
   elev: number;
   top: number;
   bottom: number;
-  jumps: CopaJump[];
+  jumps: WorldCupJump[];
   points(trackId: number): Promise<TrackPoint[]>;
 }
 
-/** Puntos de Skyderby → TrackPoint del motor (misma conversión que la validación original). */
+/** Skyderby points → engine TrackPoint (same conversion as the original validation). */
 export function toTrackPoints(raw: ApiPoint[]): TrackPoint[] {
   return raw.map((p) => ({
     t: Date.parse(p.gps_time) / 1000,
@@ -87,7 +87,7 @@ export function toTrackPoints(raw: ApiPoint[]): TrackPoint[] {
   }));
 }
 
-export async function loadCopa2025(): Promise<Copa2025> {
+export async function loadWorldCup2025(): Promise<WorldCup2025> {
   const ev = await cachedJson<ApiEvent>(`${DIR}/event.json`, `${API}/performance_competitions/${EVENT_ID}`);
   const sb = await cachedJson<ApiScoreboard>(`${DIR}/scoreboard.json`, `${API}/performance_competitions/${EVENT_ID}/scoreboard`);
   const names = new Map(ev.competitors.map((c) => [c.id, c.name.trim()]));
@@ -95,7 +95,7 @@ export async function loadCopa2025(): Promise<Copa2025> {
   const results = await mapLimit(ids, 4, (id) =>
     cachedJson<ApiResult>(`${DIR}/results/${id}.json`, `${API}/performance_competitions/${EVENT_ID}/results/${id}`),
   );
-  const jumps: CopaJump[] = results.map((r) => ({
+  const jumps: WorldCupJump[] = results.map((r) => ({
     resultId: r.id,
     trackId: r.trackId,
     competitor: names.get(r.competitorId) ?? String(r.competitorId),
@@ -131,9 +131,9 @@ export async function loadCopa2025(): Promise<Copa2025> {
   };
 }
 
-/** Descarga todo lo que falta (para precargar la caché). */
-export async function prefetchCopa2025(): Promise<Copa2025> {
-  const copa = await loadCopa2025();
-  await mapLimit(copa.jumps, 4, (j) => copa.points(j.trackId));
-  return copa;
+/** Downloads everything missing (to warm the cache). */
+export async function prefetchWorldCup2025(): Promise<WorldCup2025> {
+  const wc = await loadWorldCup2025();
+  await mapLimit(wc.jumps, 4, (j) => wc.points(j.trackId));
+  return wc;
 }

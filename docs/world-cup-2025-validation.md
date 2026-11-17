@@ -78,7 +78,7 @@ El cálculo de tiempo, distancia y velocidad es equivalente al del sistema que p
 
 ## Reproducción automática (motor en TypeScript, nov 2026)
 
-`tests/copa-del-mundo-2025.test.ts` repite esta validación con el motor nuevo (`lib/engine`) cada vez que se corre `npm test`. Los datos se bajan de la API de Skyderby a `.cache/` la primera vez.
+`tests/world-cup-2025.test.ts` repite esta validación con el motor nuevo (`lib/engine`) cada vez que se corre `npm test`. Los datos se bajan de la API de Skyderby a `.cache/` la primera vez.
 
 - **Resultado:** 333 de 333 saltos con el resultado oficial (diferencia máxima 7 millonésimas, que es la precisión con la que publica la API) y el mismo valor redondeado según 5.10.1. Carril: mismo nivel en 17 de 18 penalizados y en 330 de 333 en total, con los mismos tres casos al límite. El motor viejo y el nuevo dan exactamente lo mismo en los 333 saltos.
 - **Clasificación:** con el resultado del motor y la penalidad que fijaron los jueces, las dos categorías del evento (Female y Male) dan el mismo total y el mismo puesto que Skyderby para los 37 competidores.

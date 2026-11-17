@@ -1,4 +1,4 @@
-// Tracks de prueba del repositorio de Skyderby (github.com/skyderby/skyderby, test/fixtures/files/tracks).
+// Test tracks from the Skyderby repository (github.com/skyderby/skyderby, test/fixtures/files/tracks).
 import { cachedText } from './cache';
 
 const BASE = 'https://raw.githubusercontent.com/skyderby/skyderby/main/test/fixtures/files/tracks/';

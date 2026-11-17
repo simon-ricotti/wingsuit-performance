@@ -1,4 +1,4 @@
-// Resultados y clasificación (5.10).
+// Results and standings (5.10).
 import type { JumpRecord, Standings, StandingRow, StandingsOptions, Task } from './types';
 import { TASKS, roundHalfUp } from './util';
 
@@ -13,10 +13,10 @@ function rawOf(jump: JumpRecord | null | undefined, task: string): number {
 const isSet = (v: unknown) => v != null && v !== '';
 
 /**
- * Penalidad efectiva de cada salto (escribe `_pen` y `_penWhy` en cada uno).
- * La manual del juez manda sobre la automática.
- * 5.6.2.3: más de 300 m fuera del carril = 50 % la primera vez, cero las siguientes.
- * 5.6.3: a menos de 150 m de otro competidor = cero.
+ * Effective penalty of each jump (writes `_pen` and `_penWhy` on each one).
+ * The judge's manual penalty overrides the automatic one.
+ * 5.6.2.3: more than 300 m outside the lane = 50 % the first time, zero after that.
+ * 5.6.3: closer than 150 m to another competitor = zero.
  */
 export function effectivePenalties(jumps: JumpRecord[]): void {
   const byPilot: Record<string, boolean> = {};
@@ -49,16 +49,16 @@ export function effectivePenalties(jumps: JumpRecord[]): void {
   });
 }
 
-/** 5.10.1: resultado con la penalidad descontada; distancia en metros enteros, tiempo y velocidad con 1 decimal. */
+/** 5.10.1: result after penalty; distance in whole metres, time and speed to 1 decimal. */
 export function finalResult(jump: JumpRecord, task: string): number {
   const raw = rawOf(jump, task), v = raw - raw * (jump._pen || 0) / 100;
   return task === 'distance' ? roundHalfUp(v, 0) : roundHalfUp(v, 1);
 }
 
 /**
- * Clasificación de la jornada.
- * jumps: [{pilotId, task, round, ok, time, distance, speed, lanePen, ...}] — se modifican (campos `_...`).
- * opts.tiebreak = { task }: saltos de desempate (ronda 0), 5.10.6.
+ * Event standings.
+ * jumps: [{pilotId, task, round, ok, time, distance, speed, lanePen, ...}] — mutated (`_...` fields).
+ * opts.tiebreak = { task }: tiebreak jumps (round 0), 5.10.6.
  */
 export function standings(jumps: JumpRecord[], pilotIds?: string[] | null, opts?: StandingsOptions | null): Standings {
   effectivePenalties(jumps);
@@ -84,7 +84,7 @@ export function standings(jumps: JumpRecord[], pilotIds?: string[] | null, opts?
   Object.keys(slots).forEach((key) => {
     let best = 0;
     slots[key].forEach((j) => { if (j._result! > best) best = j._result!; });
-    slots[key].forEach((j) => { // 5.10.2: porcentaje del mejor resultado de la ronda
+    slots[key].forEach((j) => { // 5.10.2: percentage of the round's best result
       j._best = best; j._points = best > 0 ? j._result! / best * 100 : 0; j._isBest = best > 0 && j._result === best;
     });
   });
@@ -101,7 +101,7 @@ export function standings(jumps: JumpRecord[], pilotIds?: string[] | null, opts?
         const j = (slots[task + '|' + r] || []).filter((x) => x.pilotId === id)[0];
         if (j) { cells[r] = j; sum += j._points!; row.jumps++; }
       });
-      const avg = sum / rounds.length; // 5.10.3: promedio de las rondas de la tarea
+      const avg = sum / rounds.length; // 5.10.3: average of the task's rounds
       row.tasks[task] = { points: avg, cells };
       row.total += avg;
     });
@@ -109,11 +109,11 @@ export function standings(jumps: JumpRecord[], pilotIds?: string[] | null, opts?
     return row;
   });
   rows.forEach((r) => { r.tb = tb[r.pilotId] != null ? tb[r.pilotId] : null; });
-  // 5.10.5 y 5.10.6: más puntos primero; empate, por el salto de desempate
+  // 5.10.5 and 5.10.6: most points first; ties broken by the tiebreak jump
   rows.sort((a, b) => b.totalRounded - a.totalRounded || (b.tb == null ? -1 : b.tb) - (a.tb == null ? -1 : a.tb));
   rows.forEach((r, i) => {
     const p = rows[i - 1];
-    r.rank = (p && p.totalRounded === r.totalRounded && p.tb === r.tb) ? p.rank : i + 1; // 5.10.6.2 y 5.10.6.3: empate = mismo puesto
+    r.rank = (p && p.totalRounded === r.totalRounded && p.tb === r.tb) ? p.rank : i + 1; // 5.10.6.2 and 5.10.6.3: tie = shared rank
   });
   const rounds = {} as Record<Task, number[]>;
   TASKS.forEach((t) => { rounds[t] = Object.keys(roundsByTask[t]).map(Number).sort((a, b) => a - b); });

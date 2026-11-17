@@ -1,6 +1,6 @@
-// Lectura de archivos de GPS: FlySight 1, FlySight 2, Deep and Steep, GPX, KML y CSV genérico.
-// 3.1.1: el reglamento exige un receptor de al menos 5 Hz que informe exactitud; acá solo se lee,
-// los avisos de Hz y SEP los arma scoreJump.
+// GPS file parsing: FlySight 1, FlySight 2, Deep and Steep, GPX, KML and generic CSV.
+// 3.1.1: the rules require a receiver of at least 5 Hz that reports accuracy; this only reads,
+// scoreJump raises the Hz and SEP warnings.
 import type { ParsedTrack, TrackPoint } from './types';
 
 interface RawPoint extends Omit<TrackPoint, 'vD'> {
@@ -62,7 +62,7 @@ function rowsToPoints(rows: string[][], map: ColMap): RawPoint[] {
     if (map.vD != null) { const v = parseFloat(r[map.vD]); if (isFinite(v)) p.vD = v; }
     if (map.hAcc != null && map.vAcc != null) {
       const h = parseFloat(r[map.hAcc]), va = parseFloat(r[map.vAcc]);
-      // SEP50 a partir de la exactitud que informa el receptor (misma fórmula que Skyderby)
+      // SEP50 from the accuracy reported by the receiver (same formula as Skyderby)
       if (isFinite(h) && isFinite(va)) p.sep = 0.5127 * (2 * h + va);
     }
     pts.push(p);
@@ -139,7 +139,7 @@ export function parseTrack(input: string, fileName?: string): ParsedTrack {
   return { pts: fillVerticalSpeed(out), device };
 }
 
-/** Si el archivo no trae velocidad vertical, se deriva de la altura (ventana de ~1 s). */
+/** If the file has no vertical speed, derive it from altitude (~1 s window). */
 function fillVerticalSpeed(pts: RawPoint[]): TrackPoint[] {
   let missing = false;
   for (let i = 0; i < pts.length; i++) if (pts[i].vD == null) { missing = true; break; }

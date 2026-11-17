@@ -9,3 +9,8 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; }
 td.art { color: var(--muted); white-space: nowrap; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+input, button { font: inherit; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+button { cursor: pointer; font-weight: 600; }
+button:disabled { opacity: .6; cursor: default; }
+.error { color: #c0392b; }

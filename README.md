@@ -7,5 +7,5 @@ Puntaje FAI 2026 de Wingsuit Performance, revisión de jueces y replay.
 - `lib/engine`: el motor de puntaje en TypeScript (etapa 1). `npm install && npm test` corre los tests, incluida la validación contra la Copa del Mundo FAI 2025; la primera vez baja los datos de Skyderby a `.cache/` (hace falta conexión).
 - `legacy/src`: el código fuente. `node build.js <carpeta-de-tracks>` arma el HTML; `node test.js <carpeta-de-tracks>` prueba el motor.
 - `CLAUDE.md`: el plan de mudanza a Next.js en Vercel (lo lee Claude Code).
-- `docs/decisiones.md`: lo que el reglamento no define y cómo se resolvió.
-- `docs/reglamento-fai-2026-resumen.md` y `docs/validacion-copa-del-mundo-2025.md`: copias en texto de los documentos de claude.ai (los originales siguen allá).
+- `docs/decisions.md`: lo que el reglamento no define y cómo se resolvió.
+- `docs/fai-2026-rules-summary.md` y `docs/world-cup-2025-validation.md`: copias en texto de los documentos de claude.ai (los originales siguen allá).

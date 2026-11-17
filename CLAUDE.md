@@ -4,8 +4,10 @@ Plataforma de puntaje FAI de Wingsuit Performance (tiempo, distancia, velocidad)
 
 Idioma de la interfaz: español rioplatense, coma decimal, unidades m o ft configurables por jornada.
 
+Idioma del código: **inglés** (identificadores, comentarios, nombres de archivo, rutas/URLs, tablas, roles, buckets, tests). En castellano solo los textos que ve el usuario. `legacy/` queda como está (es la referencia). Los documentos de `docs/` están escritos en castellano, con nombres de archivo en inglés.
+
 ## Regla de oro
-No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competition Rules Wingsuit Flying 2026** (https://www.dfv.aero/downloads/2026_ISC_CR_WS.pdf). Cada regla en el código lleva el número de artículo en un comentario (`// 5.10.6`). Resumen en español con los artículos: `docs/reglamento-fai-2026-resumen.md`. Validación hecha: `docs/validacion-copa-del-mundo-2025.md`. Donde el reglamento no define algo, la decisión está listada en `docs/decisiones.md` y se muestra en la página "Cómo se puntúa".
+No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competition Rules Wingsuit Flying 2026** (https://www.dfv.aero/downloads/2026_ISC_CR_WS.pdf). Cada regla en el código lleva el número de artículo en un comentario (`// 5.10.6`). Resumen en español con los artículos: `docs/fai-2026-rules-summary.md`. Validación hecha: `docs/world-cup-2025-validation.md`. Donde el reglamento no define algo, la decisión está listada en `docs/decisions.md` y se muestra en la página "Cómo se puntúa".
 
 ## Qué hay en `legacy/src`
 - `engine.js` (UMD, sin dependencias, ~540 líneas): **el corazón; se migra tal cual a TypeScript sin cambiar resultados.**
@@ -30,7 +32,7 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
 ## Arquitectura propuesta
 - Next.js (App Router, TypeScript) en Vercel.
 - Supabase: Auth (mail mágico), Postgres con RLS, Storage para los archivos originales (no base64 en la base).
-- Roles: `admin` (organizador), `juez`, `piloto`, público (solo lectura de jornadas publicadas).
+- Roles: `admin` (organizador), `judge` (juez), `pilot` (piloto), público (solo lectura de jornadas publicadas).
 - El motor corre igual en cliente (vista previa al cargar) y en servidor (puntaje oficial al guardar). El servidor recalcula y no confía en lo que manda el navegador.
 - Tablas: pilots, profiles (usuario ↔ rol ↔ piloto), events, jumps, tracks (jsonb), files (ruta en Storage + sha256), reviews, decisions o columnas en jumps, audit_log, archive.
 
@@ -38,8 +40,10 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
 1. **Motor en TypeScript** (`lib/engine`) con Vitest. Tests:
    - los tracks de prueba de Skyderby (repo github.com/skyderby/skyderby, `test/fixtures/files/tracks`; no copiar los archivos al repo si la licencia no lo permite, descargarlos en el test);
    - la validación contra la Copa del Mundo FAI 2025 (competencia 619 de Skyderby: `GET https://skyderby.ru/api/v1/performance_competitions/619/results` y `/api/v1/tracks/{trackId}/points?freq_1_hz=false&trimmed[seconds_before_start]=40`). Resultado esperado: 333 de 333 saltos idénticos; penalidad de carril igual en 17 de 18. Guardar los datos descargados en un caché local ignorado por git.
-   - **Hecho (nov 2026).** Motor en `lib/engine` (TypeScript estricto), tests en `tests/` con Vitest (`npm test`; `npm run test:rapido` saltea la Copa). La ruta `/619/results` ya no existe: los IDs salen de `/619/scoreboard` y cada salto de `/619/results/{id}` (resultado sin redondear, punto de referencia, penalidad). Los fixtures están en la rama `main`. Todo se baja a `.cache/` la primera vez (~60 MB). `tests/paridad-legacy.test.ts` compara el motor nuevo con `legacy/src/engine.js` salida por salida: cualquier cambio en el motor que cambie un resultado tiene que aparecer ahí y en `docs/decisiones.md`.
+   - **Hecho (nov 2026).** Motor en `lib/engine` (TypeScript estricto), tests en `tests/` con Vitest (`npm test`; `npm run test:quick` saltea la Copa). La ruta `/619/results` ya no existe: los IDs salen de `/619/scoreboard` y cada salto de `/619/results/{id}` (resultado sin redondear, punto de referencia, penalidad). Los fixtures están en la rama `main`. Todo se baja a `.cache/` la primera vez (~60 MB). `tests/legacy-parity.test.ts` compara el motor nuevo con `legacy/src/engine.js` salida por salida: cualquier cambio en el motor que cambie un resultado tiene que aparecer ahí y en `docs/decisions.md`.
 2. **Base y autenticación**: esquema en Supabase, RLS por rol, carga de pilotos y jornadas, importador de la "copia completa" JSON.
+   - **Hecho en código (nov 2026), falta crear el proyecto en Supabase.** Diseño, permisos, costos y puesta en marcha: `docs/stage-2-database-and-costs.md`. Esquema declarativo en `supabase/schemas/` (es la fuente de verdad, sistema desde cero; las migraciones las genera la CLI recién cuando haya que cambiar una base en producción); conversión versión vieja ↔ filas en `lib/data/rows.ts`; importador en `lib/import/backup.ts` y `/admin/import`. Reglas: el navegador solo lee (RLS sin políticas de escritura), toda escritura pasa por el servidor con la clave secreta después de `assertRole`; páginas públicas estáticas (sin Realtime, `proxy.ts` solo en `/admin` y `/account`). Pruebas con PGlite en `tests/database.test.ts`.
+   - Tests: correrlos solo cuando se modifica el motor o la base, no en cada cambio.
 3. **Carga de saltos**: subida del original a Storage, SHA-256 en servidor, puntaje en servidor, archivo de reemplazos, historial.
 4. **Pantallas** en React, en este orden: clasificación (con vistas), detalle del salto y revisión del juez (montar `review.js`), replay (montar `replay.js` y `replay3d.js`), acta, exportaciones, orden de salida, ranking histórico, pilotos, "Cómo se puntúa".
 5. **Firmas con identidad real**: la firma de revisión usa el usuario logueado con rol juez, no un nombre escrito. Dos firmas = dos usuarios distintos.

@@ -1,8 +1,9 @@
 /*
- * Motor de puntaje Wingsuit Performance (FAI ISC Competition Rules Wingsuit Flying 2026).
- * Migración a TypeScript de legacy/src/engine.js sin cambios de resultados: los tests de
- * paridad (tests/paridad-legacy.test.ts) comparan ambos motores salida por salida.
- * Sin dependencias: corre igual en el navegador (vista previa) y en el servidor (puntaje oficial).
+ * Wingsuit Performance scoring engine (FAI ISC Competition Rules Wingsuit Flying 2026).
+ * TypeScript port of legacy/src/engine.js with identical results: the parity tests
+ * (tests/legacy-parity.test.ts) compare both engines output by output.
+ * No dependencies: runs the same in the browser (preview) and on the server (official score).
+ * User-facing strings (flags, penalty reasons) are in Spanish, as in the previous platform.
  */
 export * from './types';
 export { TASKS, DEFAULT_CFG, roundHalfUp, vincenty, projector, es } from './util';
