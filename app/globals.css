@@ -142,3 +142,4 @@ a, button, select { touch-action: manipulation; }
   .acta-t tr { break-inside: avoid; }
   .standings tbody td:nth-child(-n+2) { position: static; }
 }
+.acta .standings td, .acta .standings th { position: static !important; }

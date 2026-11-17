@@ -35,7 +35,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         j.device, j.fileName, j.fileHash ?? '', j.notes ?? '']; // 'Equipo' is the GPS device, as in the previous platform
     }),
   ];
-  const body = '﻿' + rows.map((row) => row.map(cell).join(';')).join('\r\n');
+  const body = '\ufeff' + rows.map((row) => row.map(cell).join(';')).join('\r\n');
   return new NextResponse(body, {
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${slug(ev.name)}-resultados.csv"`, 'Cache-Control': 'private, no-store' },
   });
