@@ -76,6 +76,15 @@ El cálculo de tiempo, distancia y velocidad es equivalente al del sistema que p
 - [ ] Marcar como "al límite" todo desvío a menos de 15 m de un cambio de nivel (300, 450 y 600 m del eje), para que el juez lo revise.
 - [ ] Mostrar en el mapa el punto de inicio del carril y el punto de máximo desvío, y dejar que el juez ajuste el inicio.
 
+## Reproducción automática (motor en TypeScript, nov 2026)
+
+`tests/copa-del-mundo-2025.test.ts` repite esta validación con el motor nuevo (`lib/engine`) cada vez que se corre `npm test`. Los datos se bajan de la API de Skyderby a `.cache/` la primera vez.
+
+- **Resultado:** 333 de 333 saltos con el resultado oficial (diferencia máxima 7 millonésimas, que es la precisión con la que publica la API) y el mismo valor redondeado según 5.10.1. Carril: mismo nivel en 17 de 18 penalizados y en 330 de 333 en total, con los mismos tres casos al límite. El motor viejo y el nuevo dan exactamente lo mismo en los 333 saltos.
+- **Clasificación:** con el resultado del motor y la penalidad que fijaron los jueces, las dos categorías del evento (Female y Male) dan el mismo total y el mismo puesto que Skyderby para los 37 competidores.
+- **Cómo se pasan los puntos al motor:** la validación de arriba derivó la velocidad vertical de la altura (como hace el motor con un GPX). Con esa conversión el test reproduce el rango de la salida (−0,41 a +0,35 s, mediana −0,11 s) y la mayoría de los metros fuera del carril de la tabla; algunos difieren en unas décimas (por ejemplo 460,0 en vez de 459,6 m para Luke Rogers), probablemente por detalles de la conversión original, que no quedó guardada. Usando la velocidad vertical que trae cada punto (como al leer un FlySight) la salida queda entre −0,20 y 0,00 s y los resultados y niveles de penalidad son los mismos. El test corre las dos variantes.
+- **Distancia en Skyderby:** el scoreboard muestra la distancia truncada (3914,78 m aparece como "3914"), pero los puntos los calcula con el valor redondeado, igual que 5.10.1. La plataforma redondea medios hacia arriba.
+
 ## Fuentes
 
 - [Skyderby, 5.ª Copa del Mundo FAI de Wingsuit Flying](https://www.skyderby.io/events/performance/619): resultados, penalidades y tracks de cada salto.
