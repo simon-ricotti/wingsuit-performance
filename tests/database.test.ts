@@ -466,3 +466,13 @@ describe('judge review (decisions, signatures, delete, task validation)', () => 
     }
   });
 });
+
+test('editing only the judge notes keeps the task validated; a decision reopens it', async () => {
+  const K = ['eabc123', 'peva05', 'time', 3];
+  const validated = async () => (await db.as<EventRow>(SERVICE, `select validated from public.events where id = 'eabc123'`))[0].validated;
+  await db.run(SERVICE, `update public.events set validated = validated || '{"time|3": {"by": "x", "at": 1}}' where id = 'eabc123'`);
+  await db.as(SERVICE, `select public.update_jump($1, $2, $3, $4, '{"notes": "solo nota"}'::jsonb, false, 'x', null, 'x')`, K);
+  expect(await validated()).toHaveProperty('time|3');
+  await db.as(SERVICE, `select public.update_jump($1, $2, $3, $4, '{"pen_manual": 10}'::jsonb, false, 'x', null, 'x')`, K);
+  expect(await validated()).not.toHaveProperty('time|3');
+});

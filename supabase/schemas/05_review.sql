@@ -48,7 +48,10 @@ begin
     values (p_event, p_actor, coalesce(p_who, ''), p_text, public.jump_key(p_pilot, p_task, p_round),
             jsonb_build_object('before', (select jsonb_object_agg(k, to_jsonb(old_row) -> k) from jsonb_object_keys(p) k),
                                'after', p, 'reviewsRemoved', removed));
-  perform public.reopen_slot(p_event, p_task, p_round, p_actor, p_who);
+  -- Notes alone change no result: the task stays validated.
+  if p_clear_reviews or exists (select 1 from jsonb_object_keys(p) k where k <> 'notes') then
+    perform public.reopen_slot(p_event, p_task, p_round, p_actor, p_who);
+  end if;
 end $$;
 
 -- Review signature by the logged-in judge. Two signatures are always two different users.
