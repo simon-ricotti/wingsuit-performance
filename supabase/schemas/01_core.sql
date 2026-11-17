@@ -206,6 +206,13 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select coalesce((select published from public.events where id = p_event), false)
 $$;
 
+-- Who is making a change: the logged-in user, or the actor the server passes to a write function
+-- (server writes use the secret key, so auth.uid() is null there).
+create function public.current_actor()
+returns uuid language sql stable as $$
+  select coalesce(auth.uid(), nullif(current_setting('app.actor', true), '')::uuid)
+$$;
+
 -- updated_at
 create function public.touch_updated_at()
 returns trigger language plpgsql as $$
@@ -236,7 +243,7 @@ begin
       'track', (select t.packed from public.tracks t where (t.event_id, t.pilot_id, t.task, t.round) = (old.event_id, old.pilot_id, old.task, old.round)),
       'file', (select to_jsonb(f) from public.files f where (f.event_id, f.pilot_id, f.task, f.round) = (old.event_id, old.pilot_id, old.task, old.round)),
       'reviews', (select coalesce(jsonb_agg(to_jsonb(r) order by r.at), '[]') from public.reviews r where (r.event_id, r.pilot_id, r.task, r.round) = (old.event_id, old.pilot_id, old.task, old.round))
-    ), true, current_setting('app.reason', true), auth.uid());
+    ), true, current_setting('app.reason', true), public.current_actor());
   return old;
 end $$;
 create trigger jumps_archive before delete on public.jumps for each row execute function public.archive_deleted_jump();
@@ -245,7 +252,7 @@ create function public.archive_deleted_row()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   insert into public.archive (kind, event_id, key, data, deleted, reason, archived_by)
-  values (tg_argv[0], case when tg_argv[0] = 'event' then old.id end, old.id, to_jsonb(old), true, current_setting('app.reason', true), auth.uid());
+  values (tg_argv[0], case when tg_argv[0] = 'event' then old.id end, old.id, to_jsonb(old), true, current_setting('app.reason', true), public.current_actor());
   return old;
 end $$;
 create trigger pilots_archive before delete on public.pilots for each row execute function public.archive_deleted_row('pilot');

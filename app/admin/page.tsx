@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth/session';
+import { ROLE_LABEL } from '@/lib/auth/roles';
 
 export const metadata = { title: 'Administración · Wingsuit Performance' };
-
-const ROLE_LABEL = { admin: 'organizador', judge: 'juez', pilot: 'piloto' } as const;
 
 export default async function AdminPage() {
   const s = await requireRole('admin', 'judge', 'pilot');
   return (
     <main>
-      <h1>Hola{ s.displayName ? `, ${s.displayName}` : '' }</h1>
+      <h1>Hola{s.displayName ? `, ${s.displayName}` : ''}</h1>
       <p className="sub">{s.email} · rol: {ROLE_LABEL[s.role]}</p>
-      {s.role === 'admin' && (
-        <ul>
-          <li><Link href="/admin/import">Importar una jornada de la versión anterior</Link></li>
+      {s.role !== 'pilot' && (
+        <ul className="menu">
+          <li><Link href="/admin/events">Jornadas</Link></li>
+          <li><Link href="/admin/pilots">Pilotos</Link></li>
+          {s.role === 'admin' && <li><Link href="/admin/users">Usuarios y roles</Link></li>}
+          {s.role === 'admin' && <li><Link href="/admin/import">Importar una jornada de la versión anterior</Link></li>}
         </ul>
       )}
       {s.role === 'pilot' && <p>Por ahora no hay nada para pilotos acá: la carga de saltos propios llega en una etapa próxima.</p>}

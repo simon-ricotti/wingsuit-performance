@@ -6,7 +6,7 @@ Nov 16, 2026
 
 - **Esquema** (`supabase/schemas/`, declarativo: describe cómo es la base, no pasos de migración): `pilots`, `profiles` (usuario ↔ rol ↔ piloto), `events`, `jumps`, `tracks`, `files`, `reviews`, `archive`, `audit_log`, y los buckets privados `originals` e `imports` en Storage.
 - **Roles**: `admin` (organizador), `judge` (juez), `pilot` (piloto) y el público sin login.
-- **Login con mail mágico** (`/login`), panel mínimo (`/admin`) e **importador de la copia completa** (`/admin/import`).
+- **Login con mail mágico** (`/login`), panel (`/admin`) con **jornadas** (`/admin/events`: crear, editar ajustes y juzgamiento, borrar si no tiene saltos), **pilotos** (`/admin/pilots`), **usuarios y roles** (`/admin/users`) e **importador de la copia completa** (`/admin/import`). Cada cambio se guarda junto con su entrada en el historial, en la misma llamada a la base (`supabase/schemas/03_admin.sql`).
 - **Pruebas** (`tests/database.test.ts`): cargan el esquema real en un Postgres local (PGlite) y verifican permisos, archivo e importación. La jornada importada da **la misma clasificación** que la versión vieja (criterio de aceptación de CLAUDE.md).
 
 ## Cómo quedan los permisos
@@ -15,8 +15,8 @@ Nov 16, 2026
 | --- | --- | --- |
 | Público (sin login) | Jornadas publicadas: saltos, tracks, pilotos que saltaron en ellas | Nada |
 | Piloto | Lo mismo que el público, más su ficha y su perfil | Nada (la carga de saltos propios es la etapa 6) |
-| Juez | Todo, incluidos historial y archivo | Nada directo: a través del servidor |
-| Admin | Todo, incluidos los perfiles de todos | Nada directo: a través del servidor |
+| Juez | Todo, incluidos historial y archivo | A través del servidor: pilotos |
+| Admin | Todo, incluidos los perfiles de todos | A través del servidor: jornadas, pilotos, roles e importación |
 
 Nadie escribe desde el navegador, ni siquiera un admin: RLS no tiene políticas de escritura. Todas las escrituras las hace el servidor con la clave secreta, después de controlar el rol y recalcular el puntaje. Así un usuario con sesión no puede mandar un resultado inventado llamando directo a la API de Supabase.
 
@@ -31,6 +31,8 @@ Nadie escribe desde el navegador, ni siquiera un admin: RLS no tiene políticas 
 5. **Todo o nada al importar:** una sola llamada a la base (`import_backup`) en una transacción.
 6. **Verificación de sesión local** (`getClaims`): con las claves de firma asimétricas de Supabase no hace falta consultar al servidor de Auth en cada página.
 7. **Consultas con RLS baratas:** las funciones de rol se evalúan una vez por consulta, no por fila.
+
+**Ajustes de puntaje fijos con saltos cargados:** cuando una jornada ya tiene saltos, la elevación, la ventana, la salida, el carril, la separación y los puntos de referencia no se pueden cambiar (lo controla la base). Los resultados guardados dejarían de corresponder; se habilita cuando esté el recálculo, con la carga de saltos (etapa 3).
 
 ## Cuánto ocupa
 

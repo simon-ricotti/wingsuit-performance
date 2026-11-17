@@ -5,6 +5,7 @@ import * as W from '../lib/engine';
 import { rowToEvent, rowToJump, rowToPilot, type EventRow, type JumpRow, type PilotRow, type ReviewRow } from '../lib/data/rows';
 import { parseBackup, prepareImport, BackupError, type LegacyBackup, type PreparedImport } from '../lib/import/backup';
 import { createTestDb, createUser, type TestDb } from './support/db';
+import { parseEventSettings } from '../lib/events/settings';
 import { buildLegacyBackup } from './support/legacy-backup';
 import { legacy } from './support/legacy';
 
@@ -233,5 +234,80 @@ describe('nothing is deleted without archiving', () => {
 
   test('a pilot with jumps cannot be deleted', async () => {
     await expect(db.run(SERVICE, `delete from public.pilots where id = 'pana01'`)).rejects.toThrow(/foreign key/);
+  });
+});
+
+describe('admin writes (events, pilots, user access)', () => {
+  const call = async <T = unknown>(fn: string, args: string, params: unknown[]) =>
+    (await db.as<{ r: T }>(SERVICE, `select public.${fn}(${args}) as r`, params))[0]?.r;
+  const lastLog = async () => (await db.as<{ text: string; actor: string | null; who: string; event_id: string | null }>(SERVICE, `select * from public.audit_log order by id desc limit 1`))[0];
+
+  test('creating and editing an event writes the audit log in the same call', async () => {
+    const settings = parseEventSettings({ name: 'Entrenamiento', date: '2026-12-01', dz: 'AVA', units: 'ft', elev: '85', top: '8202', bottom: '4921', lane: '1', sepCheck: '0', refs: 'Norte, -33.01, -60.64', profile: 'fai', reviews: '2', door: 'fd', gpsRule: 'rejump', exitRule: 'rejump', mode: 'competition', rounds: '4' });
+    expect(settings.cfg).toEqual({ elev: 26, top: 2500, bottom: 1500, exitMin: 3200, exitMax: 3353 }); // ft → m as the previous platform
+    const id = await call<string>('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify(settings), admin, 'Admin']);
+    expect(id).toMatch(/^e[0-9a-f]{12}$/);
+    expect(await lastLog()).toMatchObject({ event_id: id, actor: admin, text: 'Se creó la jornada "Entrenamiento"' });
+    const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = $1`, [id]);
+    expect(ev).toMatchObject({ mode: 'competition', rounds: 4, units: 'ft', lane: true, sep_check: false, published: false });
+    expect(ev.refs).toEqual([{ name: 'Norte', lat: -33.01, lon: -60.64 }]);
+
+    // No change → no log entry
+    const before = await lastLog();
+    await call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ ...settings, id }), admin, 'Admin']);
+    expect(await lastLog()).toEqual(before);
+
+    await call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ ...settings, id, name: 'Entrenamiento 2', published: true, id_extra: 1 }), admin, 'Admin']);
+    const [after] = await db.as<EventRow>(SERVICE, `select * from public.events where id = $1`, [id]);
+    expect(after.name).toBe('Entrenamiento 2');
+    expect(after.published).toBe(false); // not editable here
+    expect((await lastLog()).text).toBe('Se cambiaron los ajustes de la jornada (name)');
+  });
+
+  test('scoring settings are locked once an event has jumps; the rest can change', async () => {
+    const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = 'eabc123'`);
+    await expect(call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, cfg: { ...ev.cfg, elev: 30 } }), admin, 'Admin']))
+      .rejects.toThrow(/ya tiene saltos/);
+    await expect(call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, lane: false }), admin, 'Admin']))
+      .rejects.toThrow(/ya tiene saltos/);
+    await call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, name: 'Copa AVA, fecha 3 (renombrada)' }), admin, 'Admin']);
+    expect((await db.as<EventRow>(SERVICE, `select name from public.events where id = 'eabc123'`))[0].name).toBe('Copa AVA, fecha 3 (renombrada)');
+  });
+
+  test('deleting: an event or pilot with jumps is refused; otherwise it is archived with the actor', async () => {
+    await expect(call('delete_event', `'eabc123', $1::uuid, 'Admin', null`, [admin])).rejects.toThrow(/tiene saltos/);
+    await expect(call('delete_pilot', `'pana01', $1::uuid, 'Admin', null`, [admin])).rejects.toThrow(/tiene saltos/);
+    const pid = await call<string>('save_pilot', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ name: 'Piloto Nuevo', gender: 'F' }), judge, 'Juez']);
+    expect((await lastLog()).text).toBe('Se creó el piloto Piloto Nuevo');
+    await call('save_pilot', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: pid, team: 'Rosario' }), judge, 'Juez']);
+    expect((await lastLog()).text).toBe('Se editó el piloto Piloto Nuevo (team)');
+    await call('delete_pilot', `$1, $2::uuid, 'Admin', 'cargado por error'`, [pid, admin]);
+    const [a] = await db.as<{ kind: string; key: string; archived_by: string; reason: string }>(SERVICE, `select * from public.archive order by id desc limit 1`);
+    expect(a).toMatchObject({ kind: 'pilot', key: pid, archived_by: admin, reason: 'cargado por error' });
+    expect((await lastLog()).text).toBe('Se borró el piloto Piloto Nuevo (queda en el archivo)');
+  });
+
+  test('user access: role and pilot link, logged; at least one admin; a pilot links to one user', async () => {
+    await call('set_user_access', `$1::uuid, 'judge', null, 'Juez Uno', $2::uuid, 'Admin'`, [pilotWithoutRecord, admin]);
+    expect((await db.as<{ role: string; display_name: string }>(SERVICE, `select role, display_name from public.profiles where id = $1`, [pilotWithoutRecord]))[0])
+      .toEqual({ role: 'judge', display_name: 'Juez Uno' });
+    expect((await lastLog()).text).toBe('Se cambió el acceso de Juez Uno: rol judge, sin piloto vinculado');
+    await expect(call('set_user_access', `$1::uuid, 'pilot', 'pana01', 'X', $2::uuid, 'Admin'`, [pilotWithoutRecord, admin])).rejects.toThrow(/ya está vinculado/);
+    await expect(call('set_user_access', `$1::uuid, 'judge', null, 'Admin', $1::uuid, 'Admin'`, [admin])).rejects.toThrow(/al menos un organizador/);
+  });
+
+  test('none of the write functions can be called from the browser', async () => {
+    for (const who of [ANON, { role: 'authenticated', uid: admin } as const]) {
+      await expect(db.run(who, `select public.save_event('{}'::jsonb, null, 'x')`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.save_pilot('{}'::jsonb, null, 'x')`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.set_user_access($1::uuid, 'admin', null, '', null, 'x')`, [admin])).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.delete_event('x', null, 'x', null)`)).rejects.toThrow(/permission denied/);
+    }
+  });
+
+  test('jump counts per event follow RLS', async () => {
+    expect(await db.as(ANON, `select * from public.event_jump_counts`)).toEqual([]);
+    const rows = await db.as<{ event_id: string; jumps: number }>({ role: 'authenticated', uid: admin }, `select * from public.event_jump_counts where event_id = 'eabc123'`);
+    expect(rows).toEqual([{ event_id: 'eabc123', jumps: backup.jumps.length }]);
   });
 });
