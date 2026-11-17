@@ -17,9 +17,10 @@ $$;
 -- ---------- events ----------
 -- Creates (no id) or updates an event. Only the editable settings are taken from p_event; ids,
 -- publication, validations, tiebreak and exit order are managed elsewhere.
--- Scoring settings (cfg, lane, separation, reference points) cannot change once the event has jumps,
--- because stored results would no longer match them (rescoring arrives with jump upload, stage 3).
-create function public.save_event(p_event jsonb, p_actor uuid, p_who text)
+-- When scoring settings (cfg, lane, separation, reference points) change on an event with jumps, the
+-- server passes the jumps rescored with the new settings (p_scores, see apply_scores in 04_jumps.sql)
+-- and both are saved together: stored results always match the event's settings.
+create function public.save_event(p_event jsonb, p_actor uuid, p_who text, p_scores jsonb default null)
 returns text language plpgsql security definer set search_path = '' as $$
 declare
   editable constant text[] := array['name', 'date', 'dz', 'mode', 'rounds', 'team_size', 'units', 'lane', 'sep_check', 'refs', 'cfg', 'judging'];
@@ -51,8 +52,9 @@ begin
   select coalesce(array_agg(k), '{}') into changed from unnest(editable) k
    where (to_jsonb(old_row) -> k) is distinct from (to_jsonb(new_row) -> k);
   if cardinality(changed) = 0 then return old_row.id; end if;
-  if changed && scoring and exists (select 1 from public.jumps where event_id = old_row.id) then
-    raise exception 'La jornada ya tiene saltos: la elevación, la ventana, la salida, el carril, la separación y los puntos de referencia no se pueden cambiar todavía (el recálculo llega con la carga de saltos).';
+  if jsonb_typeof(p_scores) = 'null' then p_scores := null; end if;
+  if changed && scoring and p_scores is null and exists (select 1 from public.jumps where event_id = old_row.id) then
+    raise exception 'Cambiaron los ajustes de puntaje: hay que recalcular los saltos. Probá de nuevo.';
   end if;
 
   update public.events set
@@ -64,6 +66,10 @@ begin
     values (old_row.id, p_actor, coalesce(p_who, ''), 'Se cambiaron los ajustes de la jornada (' || array_to_string(changed, ', ') || ')',
             jsonb_build_object('before', (select jsonb_object_agg(k, to_jsonb(old_row) -> k) from unnest(changed) k),
                                'after',  (select jsonb_object_agg(k, to_jsonb(new_row) -> k) from unnest(changed) k)));
+  if changed && scoring and p_scores is not null then
+    perform public.apply_scores(old_row.id, p_scores, p_actor, p_who,
+      'Se recalcularon ' || jsonb_array_length(p_scores) || ' saltos con los ajustes nuevos');
+  end if;
   return old_row.id;
 end $$;
 
@@ -174,13 +180,13 @@ begin
 end $$;
 
 revoke execute on function public.begin_admin_write(uuid, text) from public, anon, authenticated;
-revoke execute on function public.save_event(jsonb, uuid, text) from public, anon, authenticated;
+revoke execute on function public.save_event(jsonb, uuid, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.delete_event(text, uuid, text, text) from public, anon, authenticated;
 revoke execute on function public.save_pilot(jsonb, uuid, text) from public, anon, authenticated;
 revoke execute on function public.delete_pilot(text, uuid, text, text) from public, anon, authenticated;
 revoke execute on function public.set_user_access(uuid, public.app_role, text, text, uuid, text) from public, anon, authenticated;
 grant execute on function public.begin_admin_write(uuid, text) to service_role;
-grant execute on function public.save_event(jsonb, uuid, text) to service_role;
+grant execute on function public.save_event(jsonb, uuid, text, jsonb) to service_role;
 grant execute on function public.delete_event(text, uuid, text, text) to service_role;
 grant execute on function public.save_pilot(jsonb, uuid, text) to service_role;
 grant execute on function public.delete_pilot(text, uuid, text, text) to service_role;

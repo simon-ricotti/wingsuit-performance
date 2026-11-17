@@ -15,8 +15,8 @@ Nov 16, 2026
 | --- | --- | --- |
 | Público (sin login) | Jornadas publicadas: saltos, tracks, pilotos que saltaron en ellas | Nada |
 | Piloto | Lo mismo que el público, más su ficha y su perfil | Nada (la carga de saltos propios es la etapa 6) |
-| Juez | Todo, incluidos historial y archivo | A través del servidor: pilotos |
-| Admin | Todo, incluidos los perfiles de todos | A través del servidor: jornadas, pilotos, roles e importación |
+| Juez | Todo, incluidos historial y archivo | A través del servidor: pilotos y carga de saltos |
+| Admin | Todo, incluidos los perfiles de todos | A través del servidor: jornadas, pilotos, saltos, recálculo, roles e importación |
 
 Nadie escribe desde el navegador, ni siquiera un admin: RLS no tiene políticas de escritura. Todas las escrituras las hace el servidor con la clave secreta, después de controlar el rol y recalcular el puntaje. Así un usuario con sesión no puede mandar un resultado inventado llamando directo a la API de Supabase.
 
@@ -32,7 +32,7 @@ Nadie escribe desde el navegador, ni siquiera un admin: RLS no tiene políticas 
 6. **Verificación de sesión local** (`getClaims`): con las claves de firma asimétricas de Supabase no hace falta consultar al servidor de Auth en cada página.
 7. **Consultas con RLS baratas:** las funciones de rol se evalúan una vez por consulta, no por fila.
 
-**Ajustes de puntaje fijos con saltos cargados:** cuando una jornada ya tiene saltos, la elevación, la ventana, la salida, el carril, la separación y los puntos de referencia no se pueden cambiar (lo controla la base). Los resultados guardados dejarían de corresponder; se habilita cuando esté el recálculo, con la carga de saltos (etapa 3).
+**Ajustes de puntaje con saltos cargados:** si cambian la elevación, la ventana, la salida, el carril, la separación o los puntos de referencia de una jornada con saltos, el servidor recalcula todos los saltos desde sus tracks y la base guarda ajustes y resultados juntos (si no, rechaza el cambio). Así los resultados guardados siempre corresponden a los ajustes.
 
 ## Cuánto ocupa
 

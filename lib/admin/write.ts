@@ -5,7 +5,7 @@ import { createAdminClient } from '../supabase/admin';
 import type { Session } from '../auth/session';
 
 /** Result of a form action: an error message for the user (Spanish), or nothing. */
-export interface FormState { error?: string; saved?: boolean }
+export interface FormState { error?: string; saved?: boolean; rescored?: number }
 
 /** Name recorded in the audit log for this user. */
 export const actorName = (s: Session) => s.displayName || s.email;

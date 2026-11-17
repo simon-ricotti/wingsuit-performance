@@ -6,7 +6,7 @@ import type { FormState } from '@/lib/admin/write';
 
 const ALT_FIELDS = ['elev', 'top', 'bottom', 'exitMin', 'exitMax'] as const;
 
-export function EventForm({ initial, scoringLocked }: { initial: EventFormValues; scoringLocked: boolean }) {
+export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps: number }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveEvent, {});
   const [units, setUnits] = useState(initial.units);
   const [alts, setAlts] = useState(() => Object.fromEntries(ALT_FIELDS.map((k) => [k, initial[k]])) as Record<(typeof ALT_FIELDS)[number], string>);
@@ -29,10 +29,10 @@ export function EventForm({ initial, scoringLocked }: { initial: EventFormValues
   }
   const setJ = <K extends keyof Judging>(k: K, v: Judging[K]) => setJudging((j) => ({ ...j, [k]: v, profile: 'custom' }));
 
-  const alt = (k: (typeof ALT_FIELDS)[number], label: string, disabled = false) => (
+  const alt = (k: (typeof ALT_FIELDS)[number], label: string) => (
     <label className="field">{label} ({u}{k === 'elev' ? ' sobre el nivel del mar' : ' AGL'})
       <input name={k} inputMode="decimal" value={alts[k]} onChange={(e) => setAlts({ ...alts, [k]: e.target.value })}
-        required={k === 'elev'} readOnly={disabled} aria-readonly={disabled} />
+        required={k === 'elev'} />
     </label>
   );
 
@@ -54,9 +54,9 @@ export function EventForm({ initial, scoringLocked }: { initial: EventFormValues
       </div>
 
       <h2>Puntaje</h2>
-      {scoringLocked && (
-        <p className="note">La jornada ya tiene saltos: la elevación, la ventana, la salida, el carril, la separación y los puntos de referencia
-          quedan fijos hasta que esté el recálculo (llega con la carga de saltos). El resto se puede cambiar.</p>
+      {jumps > 0 && (
+        <p className="note">La jornada tiene {jumps} saltos: si cambiás la elevación, la ventana, la salida, el carril, la separación o los
+          puntos de referencia, al guardar se recalculan todos con los ajustes nuevos (queda en el historial).</p>
       )}
       <div className="grid">
         <label className="field">Unidad de las alturas
@@ -65,18 +65,18 @@ export function EventForm({ initial, scoringLocked }: { initial: EventFormValues
             <option value="ft">Pies</option>
           </select>
         </label>
-        {alt('elev', 'Elevación del DZ', scoringLocked)}
-        {alt('top', 'Ventana: límite superior', scoringLocked)}
-        {alt('bottom', 'Ventana: límite inferior', scoringLocked)}
-        {alt('exitMin', 'Salida mínima', scoringLocked)}
-        {alt('exitMax', 'Salida máxima', scoringLocked)}
-        <LockedSelect name="lane" label="Carril designado" initial={initial.lane ? '1' : '0'} locked={scoringLocked}
+        {alt('elev', 'Elevación del DZ')}
+        {alt('top', 'Ventana: límite superior')}
+        {alt('bottom', 'Ventana: límite inferior')}
+        {alt('exitMin', 'Salida mínima')}
+        {alt('exitMax', 'Salida máxima')}
+        <Select name="lane" label="Carril designado" initial={initial.lane ? '1' : '0'}
           options={[['1', 'Aplicar penalidades de carril'], ['0', 'No evaluar carril']]} />
-        <LockedSelect name="sepCheck" label="Separación entre competidores" initial={initial.sepCheck ? '1' : '0'} locked={scoringLocked}
+        <Select name="sepCheck" label="Separación entre competidores" initial={initial.sepCheck ? '1' : '0'}
           options={[['1', 'Cero si pasan a menos de 150 m'], ['0', 'No evaluar']]} />
       </div>
       <label className="field">Puntos de referencia en tierra, uno por línea: nombre, latitud, longitud
-        <textarea name="refs" rows={3} defaultValue={initial.refs} placeholder="Norte, -33.0124, -60.6400" readOnly={scoringLocked} />
+        <textarea name="refs" rows={3} defaultValue={initial.refs} placeholder="Norte, -33.0124, -60.6400" />
       </label>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento
         FAI 2026. La unidad elegida se usa para cargar y mostrar las alturas de esta jornada; los resultados siguen en segundos, metros y km/h.</p>
@@ -116,20 +116,18 @@ export function EventForm({ initial, scoringLocked }: { initial: EventFormValues
       </div>
 
       {state.error && <p className="error">{state.error}</p>}
-      {state.saved && !pending && <p className="ok">Cambios guardados.</p>}
+      {state.saved && !pending && <p className="ok">Cambios guardados{state.rescored ? ` y ${state.rescored} saltos recalculados` : ''}.</p>}
       <div className="row"><button type="submit" disabled={pending}>{pending ? 'Guardando…' : initial.id ? 'Guardar cambios' : 'Crear jornada'}</button></div>
     </form>
   );
 }
 
-/** A select that still submits its value while locked (disabled controls are not sent with the form). */
-function LockedSelect({ name, label, initial, locked, options }: { name: string; label: string; initial: string; locked: boolean; options: [string, string][] }) {
+function Select({ name, label, initial, options }: { name: string; label: string; initial: string; options: [string, string][] }) {
   return (
     <label className="field">{label}
-      <select name={locked ? undefined : name} defaultValue={initial} disabled={locked}>
+      <select name={name} defaultValue={initial}>
         {options.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
       </select>
-      {locked && <input type="hidden" name={name} value={initial} />}
     </label>
   );
 }

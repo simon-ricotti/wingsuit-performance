@@ -264,12 +264,12 @@ describe('admin writes (events, pilots, user access)', () => {
     expect((await lastLog()).text).toBe('Se cambiaron los ajustes de la jornada (name)');
   });
 
-  test('scoring settings are locked once an event has jumps; the rest can change', async () => {
+  test('scoring settings of an event with jumps only change together with a rescoring; the rest can change', async () => {
     const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = 'eabc123'`);
     await expect(call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, cfg: { ...ev.cfg, elev: 30 } }), admin, 'Admin']))
-      .rejects.toThrow(/ya tiene saltos/);
+      .rejects.toThrow(/hay que recalcular/);
     await expect(call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, lane: false }), admin, 'Admin']))
-      .rejects.toThrow(/ya tiene saltos/);
+      .rejects.toThrow(/hay que recalcular/);
     await call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify({ id: ev.id, name: 'Copa AVA, fecha 3 (renombrada)' }), admin, 'Admin']);
     expect((await db.as<EventRow>(SERVICE, `select name from public.events where id = 'eabc123'`))[0].name).toBe('Copa AVA, fecha 3 (renombrada)');
   });
@@ -309,5 +309,98 @@ describe('admin writes (events, pilots, user access)', () => {
     expect(await db.as(ANON, `select * from public.event_jump_counts`)).toEqual([]);
     const rows = await db.as<{ event_id: string; jumps: number }>({ role: 'authenticated', uid: admin }, `select * from public.event_jump_counts where event_id = 'eabc123'`);
     expect(rows).toEqual([{ event_id: 'eabc123', jumps: backup.jumps.length }]);
+  });
+});
+
+describe('jump upload and rescoring', () => {
+  const E = 'eabc123';
+  const call = async <T = unknown>(fn: string, args: string, params: unknown[]) =>
+    (await db.as<{ r: T }>(SERVICE, `select public.${fn}(${args}) as r`, params))[0]?.r;
+  const logs = async (n: number) => (await db.as<{ text: string; jump_key: string | null }>(SERVICE, `select text, jump_key from public.audit_log order by id desc limit ${n}`)).reverse();
+  const jump = async (pilot: string, task: string, round: number) =>
+    (await db.as<JumpRow>(SERVICE, `select * from public.jumps where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [E, pilot, task, round]))[0];
+  const trackOf = async (pilot: string, task: string, round: number) =>
+    (await db.as<{ packed: unknown }>(SERVICE, `select packed from public.tracks where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [E, pilot, task, round]))[0]?.packed;
+  const file = (name: string) => ({ storage_path: `${E}/x/${'a'.repeat(64)}.gz`, sha256: 'a'.repeat(64), size: 10, name, uploaded_at: NOW });
+  const saveJump = (row: object, track: unknown, f: object | null, sep: object[] = []) =>
+    call<{ replaced: boolean }>('save_jump', '$1::jsonb, $2::jsonb, $3::jsonb, $4::jsonb, $5::uuid, $6', [JSON.stringify(row), JSON.stringify(track), JSON.stringify(f), JSON.stringify(sep), judge, 'Juez Uno']);
+
+  test('a new jump is saved with its track, file and log entry', async () => {
+    const src = await jump('pana01', 'time', 1);
+    const row = { ...src, round: 4, file_name: 'TRACK.CSV', extra: {}, lane_decision: null };
+    expect(await saveJump(row, await trackOf('pana01', 'time', 1), file('TRACK.CSV'))).toEqual({ replaced: false });
+    const saved = await jump('pana01', 'time', 4);
+    expect(saved.time).toBe(src.time);
+    expect(await trackOf('pana01', 'time', 4)).toBeTruthy();
+    expect((await db.as(SERVICE, `select 1 from public.files where event_id = $1 and pilot_id = 'pana01' and task = 'time' and round = 4`, [E]))).toHaveLength(1);
+    expect(await logs(1)).toEqual([{ text: 'Se cargó el salto de Ana Gómez, Tiempo R4 (TRACK.CSV)', jump_key: 'pana01-time-4' }]);
+  });
+
+  test('replacing archives the previous jump (track, file, reviews), starts clean and reopens a validated task', async () => {
+    const before = await jump('pana01', 'time', 1);
+    const reviewsBefore = await db.as(SERVICE, `select * from public.reviews where event_id = $1 and pilot_id = 'pana01' and task = 'time' and round = 1`, [E]);
+    const row = { ...before, distance: 1234.5, lane_decision: null, notes: null, void: null, extra: {}, file_name: 'nuevo.csv' };
+    expect(await saveJump(row, { v: 1 }, file('nuevo.csv'))).toEqual({ replaced: true });
+
+    const [a] = await db.as<{ kind: string; key: string; deleted: boolean; reason: string; archived_by: string; data: { jump: JumpRow; track: unknown; reviews: unknown[] } }>(SERVICE, `select * from public.archive order by id desc limit 1`);
+    expect(a).toMatchObject({ kind: 'jump', key: 'pana01-time-1', deleted: false, reason: 'Reemplazado por un archivo nuevo', archived_by: judge });
+    expect(a.data.jump.distance).toBe(before.distance);
+    expect(a.data.reviews).toHaveLength(reviewsBefore.length);
+    const after = await jump('pana01', 'time', 1);
+    expect(after).toMatchObject({ distance: 1234.5, file_name: 'nuevo.csv', notes: null });
+    expect(await db.as(SERVICE, `select 1 from public.reviews where event_id = $1 and pilot_id = 'pana01' and task = 'time' and round = 1`, [E])).toEqual([]);
+    expect(await trackOf('pana01', 'time', 1)).toEqual({ v: 1 });
+    const [ev] = await db.as<EventRow>(SERVICE, `select validated from public.events where id = $1`, [E]);
+    expect(ev.validated).not.toHaveProperty('time|1');
+    expect(await logs(2)).toEqual([
+      { text: 'Se reemplazó el salto de Ana Gómez, Tiempo R1; el anterior quedó archivado', jump_key: 'pana01-time-1' },
+      { text: 'Se reabrió la tarea Tiempo R1 porque cambió un salto', jump_key: 'pana01-time-1' },
+    ]);
+  });
+
+  test('separation updates only bring other jumps closer, never farther', async () => {
+    const other = await jump('pbru02', 'time', 1);
+    const row = { ...(await jump('pana01', 'time', 1)), extra: {} };
+    await saveJump(row, { v: 1 }, null, [
+      { pilot_id: 'pbru02', task: 'time', round: 1, sep_min: 99, sep_with: 'pana01', sep_violation: true },
+      { pilot_id: 'pcar03', task: 'time', round: 1, sep_min: 1e9, sep_with: 'pana01', sep_violation: false },
+    ]);
+    expect(await jump('pbru02', 'time', 1)).toMatchObject({ sep_min: other.sep_min == null || 99 < other.sep_min ? 99 : other.sep_min });
+    const pc = await jump('pcar03', 'time', 1);
+    if (pc.sep_min != null) expect(pc.sep_min).not.toBe(1e9);
+  });
+
+  test('rescoring applies only if no jump changed meanwhile, and logs what changed', async () => {
+    const rows = await db.as<JumpRow>(SERVICE, `select * from public.jumps where event_id = $1`, [E]);
+    const scores = rows.map((r) => ({ event_id: E, pilot_id: r.pilot_id, task: r.task, round: r.round, expected_updated_at: r.updated_at,
+      ok: r.ok, time: r.time, distance: r.distance, speed: r.pilot_id === 'pcar03' ? r.speed + 1 : r.speed, exit_agl: r.exit_agl, t_exit: r.t_exit, t_val: r.t_val,
+      t_top: r.t_top, t_bot: r.t_bot, t_deploy: r.t_deploy, hz: r.hz, sep_max: r.sep_max, flags: r.flags, lane_dev: r.lane_dev,
+      lane_outside: r.lane_outside, lane_pen: r.lane_pen, sep_min: r.sep_min, sep_with: r.sep_with, sep_violation: r.sep_violation }));
+    const stale = scores.map((x, i) => (i === 0 ? { ...x, expected_updated_at: '2000-01-01T00:00:00Z' } : x));
+    await expect(call('apply_scores', `$1, $2::jsonb, $3::uuid, 'Admin', 'x'`, [E, JSON.stringify(stale), admin])).rejects.toThrow(/mientras se recalculaba/);
+    await expect(call('apply_scores', `$1, $2::jsonb, $3::uuid, 'Admin', 'x'`, [E, JSON.stringify(scores.slice(1)), admin])).rejects.toThrow(/mientras se recalculaba/);
+    expect(await call('apply_scores', `$1, $2::jsonb, $3::uuid, 'Admin', 'Se recalcularon N saltos'`, [E, JSON.stringify(scores), admin])).toBe(rows.length);
+    const [l] = await db.as<{ text: string; data: { changed: { key: string }[] } }>(SERVICE, `select * from public.audit_log order by id desc limit 1`);
+    expect(l.text).toBe('Se recalcularon N saltos');
+    expect(l.data.changed.map((c) => c.key).sort()).toEqual(rows.filter((r) => r.pilot_id === 'pcar03').map((r) => `pcar03-${r.task}-${r.round}`).sort());
+  });
+
+  test('changing scoring settings on an event with jumps requires the rescored jumps, and saves both', async () => {
+    const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = $1`, [E]);
+    const next = { id: E, cfg: { ...ev.cfg, elev: 5 } };
+    await expect(call('save_event', '$1::jsonb, $2::uuid, $3', [JSON.stringify(next), admin, 'Admin'])).rejects.toThrow(/hay que recalcular/);
+    const rows = await db.as<JumpRow>(SERVICE, `select * from public.jumps where event_id = $1`, [E]);
+    const scores = rows.map((r) => ({ ...r, expected_updated_at: r.updated_at, time: r.time + 0.5 }));
+    await call('save_event', '$1::jsonb, $2::uuid, $3, $4::jsonb', [JSON.stringify(next), admin, 'Admin', JSON.stringify(scores)]);
+    expect((await db.as<EventRow>(SERVICE, `select cfg from public.events where id = $1`, [E]))[0].cfg).toMatchObject({ elev: 5 });
+    expect((await jump('pbru02', 'time', 2)).time).toBe(rows.find((r) => r.pilot_id === 'pbru02' && r.task === 'time' && r.round === 2)!.time + 0.5);
+    expect((await logs(2)).map((l) => l.text)).toEqual(['Se cambiaron los ajustes de la jornada (cfg)', `Se recalcularon ${rows.length} saltos con los ajustes nuevos`]);
+  });
+
+  test('upload and rescoring functions cannot be called from the browser', async () => {
+    for (const who of [ANON, { role: 'authenticated', uid: admin } as const]) {
+      await expect(db.run(who, `select public.save_jump('{}'::jsonb, '{}'::jsonb, null, null, null, 'x')`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.apply_scores('x', '[]'::jsonb, null, 'x', 'x')`)).rejects.toThrow(/permission denied/);
+    }
   });
 });
