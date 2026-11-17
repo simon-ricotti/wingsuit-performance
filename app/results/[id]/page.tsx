@@ -13,6 +13,12 @@ export const revalidate = 60;
 export const dynamicParams = true;
 export async function generateStaticParams() { return []; }
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { data } = await createPublicClient().from('events').select('name, date').eq('id', id).maybeSingle();
+  return { title: data ? `${data.name} · Resultados · Wingsuit Performance` : 'Resultados · Wingsuit Performance' };
+}
+
 export default async function PublicEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = createPublicClient();
@@ -39,7 +45,7 @@ export default async function PublicEventPage({ params }: { params: Promise<{ id
           <h1>{ev.name}</h1>
           <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(', ')}. {cfgLine(ev)}</p>
         </div>
-        <span className={'pill ' + (provisional.length ? 'warn' : 'good')}>{provisional.length ? 'Resultados provisorios' : 'Resultados oficiales'}</span>
+        {jumps.length > 0 && <span className={'pill ' + (provisional.length ? 'warn' : 'good')}>{provisional.length ? 'Resultados provisorios' : 'Resultados oficiales'}</span>}
       </div>
       {provisional.length > 0 && <p className="sub small">Tareas sin validar por los jueces: {provisional.map((k) => `${TASK_LABEL[k.split('|')[0] as Task]} ${roundLabel(+k.split('|')[1])}`).join(', ')}.</p>}
 
