@@ -3,6 +3,7 @@
 // Public and static (CDN).
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { JumpFlow, JumpProfile, LaneFromAbove, PassRotation, ScoringSteps } from './figures';
 
 export const metadata = { title: 'Reglamento para jueces · Wingsuit Performance', description: 'Lo que hay que saber del reglamento FAI 2026 de Wingsuit Performance para juzgar, con los artículos y cómo apoyarse en el sistema.' };
 
@@ -51,6 +52,7 @@ export default function JudgingPage() {
           <tr><td><b>Redondeo</b></td><td>Los medios siempre hacia arriba: 23,5 pasa a 24 (2.1).</td></tr>
         </tbody>
       </table>
+      <JumpProfile />
       <InSystem>la elevación del DZ se carga en los ajustes de la jornada y define todo lo demás: si está mal, todos los resultados están mal (si se corrige, el sistema recalcula todos los saltos). En el detalle de cada salto, el gráfico muestra la salida, el inicio de la validación y los cruces de la ventana; el mapa muestra el carril y el máximo desvío.</InSystem>
 
       <h2 id="equipo">Equipo y requisitos</h2>
@@ -90,6 +92,7 @@ export default function JudgingPage() {
         <li><b>Negarse a salir:</b> se informa al aterrizar; si los motivos son pertinentes hay re-salto, si no, se puntúa con la penalidad máxima (5.5.10).</li>
         <li><b>Salto oficial:</b> una vez fuera del avión, salvo emergencia, se puntúa (5.5.11). Apertura a más tardar a 600 m sobre el suelo (Código Deportivo, Sección 5, 1.3.1).</li>
       </ul>
+      <PassRotation />
       <InSystem>la altura de salida sale del track y aparece en el detalle del salto con un aviso si está fuera de rango. <i>Orden de salida</i> sortea el orden de las tareas, arma cada ronda como inverso de otra jornada (ronda 1) o de esta (rondas siguientes) y rota las pasadas entre tareas. Al cargar el salto se elige el punto de referencia asignado, y el juez lo puede corregir en el detalle.</InSystem>
 
       <h2 id="penalidades">Penalidades</h2>
@@ -105,6 +108,7 @@ export default function JudgingPage() {
           <tr><td>Negarse a salir sin motivo pertinente</td><td>Penalidad máxima</td><td>5.5.10.4</td></tr>
         </tbody>
       </table>
+      <LaneFromAbove />
       <ul>
         <li><b>Carril:</b> se controla del inicio de la validación a la salida de la ventana, y se mide en ángulo recto al <b>borde</b> del carril, a 300 m del eje: “fuera 150 m” es estar a 450 m de la recta (5.6.2).</li>
         <li><b>Separación de salida:</b> solo se penaliza si el Meet Director y el Juez Principal, revisando explicación, PLD y video, coinciden en que no estaba justificado y dio ventaja (5.5.4.1, 5.5.4.2).</li>
@@ -139,7 +143,7 @@ export default function JudgingPage() {
         <li><b>Puntaje de la tarea:</b> promedio de sus rondas (5.10.3).</li>
         <li><b>Total:</b> suma de las tres tareas, redondeada a 1 decimal; máximo 300 (5.10.4). La clasificación sale del total redondeado (5.10.5).</li>
       </ol>
-      <p>Ejemplo: en tiempo R1 el mejor hace 80,0 s y otro 60,0 s: 100 % y 75 %. En R2 ese segundo hace el mejor tiempo (100 %): su tarea de tiempo queda en 87,5.</p>
+      <ScoringSteps />
       <ul>
         <li><b>Empates:</b> en los tres primeros puestos, salto de desempate en una tarea que sortea el Juez Principal; si sigue el empate, o en otros puestos, comparten el puesto (5.10.6).</li>
         <li><b>Clasificaciones:</b> general, por tarea, femenina y por equipos, de los mismos saltos; cada una necesita al menos 4 participantes para entregar medallas (5.1, 5.10.7 a 5.10.10, 8.4, 8.5).</li>
@@ -171,6 +175,7 @@ export default function JudgingPage() {
 
       <h2 id="control">Qué controla el juez y qué el sistema</h2>
       <p>El sistema solo hace cuentas sobre el track; todo lo que pasa fuera del GPS y toda decisión de criterio es de los jueces. Regla práctica: <b>si se puede discutir, lo decide un juez</b>, que además revisa que el sistema haya recibido los datos correctos.</p>
+      <JumpFlow />
       <table className="rules-t">
         <thead><tr><th>El sistema calcula</th><th>El juez decide</th></tr></thead>
         <tbody>
