@@ -51,6 +51,8 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
         </label>
         <label className="field">Rondas (modo competencia)<input name="rounds" inputMode="numeric" defaultValue={initial.rounds} /></label>
         <label className="field">Integrantes por equipo (FAI 8.4: 3)<input name="teamSize" inputMode="numeric" defaultValue={initial.teamSize} /></label>
+        <Select name="pilotUploads" label="Carga de saltos por los pilotos" initial={initial.pilotUploads ? '1' : '0'}
+          options={[['0', 'Solo jueces y organizador'], ['1', 'Cada piloto puede cargar los suyos']]} />
       </div>
 
       <h2>Puntaje</h2>

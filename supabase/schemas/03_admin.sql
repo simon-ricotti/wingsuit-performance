@@ -23,7 +23,7 @@ $$;
 create function public.save_event(p_event jsonb, p_actor uuid, p_who text, p_scores jsonb default null)
 returns text language plpgsql security definer set search_path = '' as $$
 declare
-  editable constant text[] := array['name', 'date', 'dz', 'mode', 'rounds', 'team_size', 'units', 'lane', 'sep_check', 'refs', 'cfg', 'judging'];
+  editable constant text[] := array['name', 'date', 'dz', 'mode', 'rounds', 'team_size', 'units', 'lane', 'sep_check', 'refs', 'cfg', 'judging', 'pilot_uploads'];
   scoring constant text[] := array['cfg', 'lane', 'sep_check', 'refs'];
   p jsonb;
   old_row public.events;
@@ -35,10 +35,10 @@ begin
 
   if p_event ->> 'id' is null then
     new_row := jsonb_populate_record(null::public.events, p);
-    insert into public.events (name, date, dz, mode, rounds, team_size, units, lane, sep_check, refs, cfg, judging)
+    insert into public.events (name, date, dz, mode, rounds, team_size, units, lane, sep_check, refs, cfg, judging, pilot_uploads)
       values (new_row.name, new_row.date, coalesce(new_row.dz, ''), coalesce(new_row.mode, 'free'), coalesce(new_row.rounds, 3),
               coalesce(new_row.team_size, 3), coalesce(new_row.units, 'm'), coalesce(new_row.lane, false), coalesce(new_row.sep_check, false),
-              coalesce(new_row.refs, '[]'), coalesce(new_row.cfg, '{}'), coalesce(new_row.judging, '{"profile":"arg"}'))
+              coalesce(new_row.refs, '[]'), coalesce(new_row.cfg, '{}'), coalesce(new_row.judging, '{"profile":"arg"}'), coalesce(new_row.pilot_uploads, false))
       returning * into new_row;
     insert into public.audit_log (event_id, actor, who, text, data)
       values (new_row.id, p_actor, coalesce(p_who, ''), 'Se creó la jornada "' || new_row.name || '"', p);
@@ -60,7 +60,7 @@ begin
   update public.events set
     name = new_row.name, date = new_row.date, dz = new_row.dz, mode = new_row.mode, rounds = new_row.rounds,
     team_size = new_row.team_size, units = new_row.units, lane = new_row.lane, sep_check = new_row.sep_check,
-    refs = new_row.refs, cfg = new_row.cfg, judging = new_row.judging
+    refs = new_row.refs, cfg = new_row.cfg, judging = new_row.judging, pilot_uploads = new_row.pilot_uploads
   where id = old_row.id;
   insert into public.audit_log (event_id, actor, who, text, data)
     values (old_row.id, p_actor, coalesce(p_who, ''), 'Se cambiaron los ajustes de la jornada (' || array_to_string(changed, ', ') || ')',

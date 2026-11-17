@@ -17,7 +17,7 @@ export type UploadTicket = { path: string; token: string } | { error: string };
 
 export async function requestJumpUpload(size: number): Promise<UploadTicket> {
   try {
-    await assertRole('admin', 'judge');
+    await assertRole('admin', 'judge', 'pilot');
     if (!(size > 0 && size <= MAX_GZ_BYTES)) return { error: 'El archivo es demasiado grande.' };
     const { data, error } = await createAdminClient().storage.from(ORIGINALS).createSignedUploadUrl(`incoming/${randomUUID()}.gz`);
     if (error || !data) return { error: 'No pude preparar la subida. Probá de nuevo.' };
@@ -37,9 +37,15 @@ export type SaveJumpResult = { ok: true; jump: JumpRecord; replaced: boolean; pi
 export async function saveJump(input: SaveJumpInput): Promise<SaveJumpResult> {
   if (!INCOMING.test(input.incomingPath)) return { ok: false, error: 'Ruta de archivo inválida.' };
   try {
-    const s = await assertRole('admin', 'judge');
+    const s = await assertRole('admin', 'judge', 'pilot');
     const ev = await loadEvent(input.eventId);
     if (!ev) throw new JumpError('La jornada no existe.');
+    // Stage 6: a pilot uploads only their own jumps, and only where the organizer allows it.
+    if (s.role === 'pilot') {
+      if (!s.pilotId) throw new JumpError('Tu usuario no está vinculado a una ficha de piloto. Pedíselo al organizador.');
+      if (!ev.pilot_uploads) throw new JumpError('En esta jornada los saltos los cargan los jueces.');
+      if (input.pilotId !== s.pilotId) throw new JumpError('Solo podés cargar tus propios saltos.');
+    }
     const task = input.task;
     const round = Math.round(+input.round);
     if (!(TASKS as readonly string[]).includes(task)) throw new JumpError('Elegí la tarea.');
@@ -70,6 +76,7 @@ export async function saveJump(input: SaveJumpInput): Promise<SaveJumpResult> {
     });
     if (r.error) return { ok: false, error: r.error };
     revalidatePath(`/admin/events/${ev.id}`);
+    revalidatePath('/account');
     return { ok: true, jump: p.doc, replaced: r.data!.replaced, pilotId };
   } catch (e) {
     await discardIncoming(input.incomingPath);

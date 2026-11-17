@@ -8,6 +8,7 @@ import { EventForm } from '../../event-form';
 import { DeleteEvent } from './delete-event';
 import { RecalcButton } from './recalc-button';
 import { History } from '../../../history';
+import { StateForm } from '../state-form';
 
 export const metadata = { title: 'Ajustes de la jornada · Wingsuit Performance' };
 export const maxDuration = 60;
@@ -42,6 +43,23 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
         </>
       ) : (
         <p>Perfil de juzgamiento: {J.profile === 'custom' ? 'Personalizado' : JUDGING_PROFILES[J.profile].label}. Los ajustes los cambia el organizador.</p>
+      )}
+
+      {s.role === 'admin' && (
+        <>
+          <h2>Publicación</h2>
+          {ev.published ? (
+            <>
+              <p>Publicada: se ve sin login en <Link href={`/results/${ev.id}`}>/results/{ev.id}</Link> (se actualiza en menos de un minuto después de cada cambio).</p>
+              <StateForm event={ev.id} op="unpublish" submit="Despublicar" />
+            </>
+          ) : (
+            <>
+              <p className="sub">Sin publicar: solo la ven jueces y organizadores. Al publicarla, cualquiera ve la clasificación y los resultados (no el historial ni los archivos originales).</p>
+              <StateForm event={ev.id} op="publish" submit="Publicar la jornada" />
+            </>
+          )}
+        </>
       )}
 
       <h2>Historial</h2>

@@ -66,7 +66,7 @@ export default async function StandingsPage({ params, searchParams }: { params: 
     <main className="wide">
       <p><Link href="/admin/events">← Jornadas</Link></p>
       <h1>{ev.name}</h1>
-      <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(', ')}{ev.published ? '' : ' (sin publicar)'}</p>
+      <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(', ')}{ev.published ? <> · <Link href={`/results/${id}`}>publicada</Link></> : ' (sin publicar)'}</p>
       <nav className="row">
         <Link className="button" href={`/admin/events/${id}/upload`}>Cargar salto</Link>
         <Link href={`/admin/events/${id}/replay`}>Replay</Link>

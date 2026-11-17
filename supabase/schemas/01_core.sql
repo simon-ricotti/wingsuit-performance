@@ -59,7 +59,8 @@ create table public.events (
   published   boolean not null default false,      -- visible to the public (stage 7)
   extra       jsonb not null default '{}',
   created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default now(),
+  pilot_uploads boolean not null default false     -- pilots may upload their own jumps (stage 6)
 );
 
 -- ---------- jumps ----------

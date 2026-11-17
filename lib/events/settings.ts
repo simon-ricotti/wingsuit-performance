@@ -45,7 +45,7 @@ export interface EventFormValues {
   id: string | null;
   name: string; date: string; mode: EventMode; rounds: string; teamSize: string; dz: string; units: 'm' | 'ft';
   elev: string; top: string; bottom: string; exitMin: string; exitMax: string;
-  lane: boolean; sepCheck: boolean; refs: string;
+  lane: boolean; sepCheck: boolean; refs: string; pilotUploads: boolean;
   judging: Judging;
 }
 
@@ -61,14 +61,14 @@ export function formValuesOf(ev: EventRow | null, today: string): EventFormValue
     elev: ev && (ev.cfg as Record<string, unknown>).elev != null ? altitudeIn(cfg.elev, ft) : '',
     top: altitudeIn(cfg.top, ft), bottom: altitudeIn(cfg.bottom, ft),
     exitMin: altitudeIn(cfg.exitMin, ft), exitMax: altitudeIn(cfg.exitMax, ft),
-    lane: ev ? ev.lane : true, sepCheck: ev ? ev.sep_check : true,
+    lane: ev ? ev.lane : true, sepCheck: ev ? ev.sep_check : true, pilotUploads: ev?.pilot_uploads ?? false,
     refs: refs.map((r) => `${r.name}, ${r.lat}, ${r.lon}`).join('\n'),
     judging: judgingOf(ev?.judging),
   };
 }
 
 /** Fields accepted by public.save_event. */
-export type EventSettings = Pick<EventRow, 'name' | 'date' | 'dz' | 'mode' | 'rounds' | 'team_size' | 'units' | 'lane' | 'sep_check' | 'refs' | 'cfg' | 'judging'>;
+export type EventSettings = Pick<EventRow, 'name' | 'date' | 'dz' | 'mode' | 'rounds' | 'team_size' | 'units' | 'lane' | 'sep_check' | 'refs' | 'cfg' | 'judging' | 'pilot_uploads'>;
 
 export class SettingsError extends Error {}
 
@@ -111,7 +111,7 @@ export function parseEventSettings(f: Record<string, string | undefined>): Event
   return {
     name, date, dz: (f.dz ?? '').trim(), mode: f.mode === 'competition' ? 'competition' : 'free',
     rounds: clampInt(f.rounds, 3, 1, 12), team_size: clampInt(f.teamSize, 3, 1, 10), units: ft ? 'ft' : 'm',
-    lane: f.lane === '1', sep_check: f.sepCheck === '1', refs,
+    lane: f.lane === '1', sep_check: f.sepCheck === '1', refs, pilot_uploads: f.pilotUploads === '1',
     cfg: {
       elev, top, bottom,
       exitMin: toMetres(num(f.exitMin, dv(DEFAULT_CFG.exitMin)), ft),

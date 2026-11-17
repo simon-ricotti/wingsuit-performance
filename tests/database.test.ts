@@ -513,10 +513,19 @@ test('competition state: only whitelisted fields change, with before/after in th
   await db.as(SERVICE, `select public.set_event_state('eabc123', $1::jsonb, 'Se sorteó la tarea de desempate: Tiempo', $2::uuid, 'Juez Uno')`,
     [JSON.stringify({ tiebreak: { task: 'time', pilots: ['pana01'] }, task_order: ['speed', 'time', 'distance'], published: true, name: 'X' }), judge]);
   const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = 'eabc123'`);
-  expect(ev).toMatchObject({ tiebreak: { task: 'time' }, task_order: ['speed', 'time', 'distance'], published: false });
+  expect(ev).toMatchObject({ tiebreak: { task: 'time' }, task_order: ['speed', 'time', 'distance'], published: true }); // publication is competition state too (stage 7)
   expect(ev.name).not.toBe('X');
   const [l] = await db.as<{ text: string; data: { after: Record<string, unknown> } }>(SERVICE, `select * from public.audit_log order by id desc limit 1`);
   expect(l.text).toBe('Se sorteó la tarea de desempate: Tiempo');
-  expect(Object.keys(l.data.after).sort()).toEqual(['task_order', 'tiebreak']);
+  expect(Object.keys(l.data.after).sort()).toEqual(['published', 'task_order', 'tiebreak']);
+  await db.run(SERVICE, `update public.events set published = false where id = 'eabc123'`);
   await expect(db.run({ role: 'authenticated', uid: admin }, `select public.set_event_state('eabc123', '{}'::jsonb, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
+});
+
+test('stage 6: the organizer opens an event to pilot uploads (saved and logged like any setting)', async () => {
+  const id = (await db.as<{ r: string }>(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin') as r`, [JSON.stringify({ name: 'Abierta a pilotos', pilot_uploads: true }), admin]))[0].r;
+  expect((await db.as<EventRow>(SERVICE, `select pilot_uploads from public.events where id = $1`, [id]))[0].pilot_uploads).toBe(true);
+  await db.as(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin')`, [JSON.stringify({ id, pilot_uploads: false }), admin]);
+  expect((await db.as<EventRow>(SERVICE, `select pilot_uploads from public.events where id = $1`, [id]))[0].pilot_uploads).toBe(false);
+  expect((await db.as<{ text: string }>(SERVICE, `select text from public.audit_log order by id desc limit 1`))[0].text).toBe('Se cambiaron los ajustes de la jornada (pilot_uploads)');
 });

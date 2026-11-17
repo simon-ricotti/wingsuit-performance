@@ -78,6 +78,9 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
     const ids = form.getAll('pilot').map(String).filter((id) => (pilots ?? []).some((p) => p.id === id));
     const size = Math.max(1, Math.min(30, Math.round(+(form.get('passSize') ?? 5)) || 5));
     patch = { roster: ids, pass_size: size }; text = `Participantes: ${ids.length}; pilotos por pasada: ${size}`;
+  } else if (op === 'publish' || op === 'unpublish') {
+    patch = { published: op === 'publish' }; // stage 7: visible without login at /results/<id>
+    text = op === 'publish' ? 'Se publicó la jornada' : 'Se despublicó la jornada';
   } else if (op === 'task-order-draw') {
     const order = shuffle([...TASKS], rnd);
     patch = { task_order: order }; text = `Se sorteó el orden de las tareas: ${order.map((t) => TASK_LABEL[t]).join(', ')}`; // 5.4.8
@@ -109,5 +112,6 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
   const r = await callWrite('set_event_state', { p_event: eventId, p_patch: patch, p_text: text, p_actor: s.userId, p_who: who });
   if (r.error) return { error: r.error };
   revalidatePath(`/admin/events/${eventId}`, 'layout');
+  if (op === 'publish' || op === 'unpublish') revalidatePath('/results', 'layout');
   return { saved: true };
 }

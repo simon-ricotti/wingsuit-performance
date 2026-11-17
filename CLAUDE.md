@@ -62,7 +62,9 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
    - **Hecho también (nov 2026):** desempate (sorteo de la tarea en el servidor) y nominación de equipos en la clasificación; orden de salida (`/admin/events/[id]/order`: participantes, sorteo del orden de tareas, orden por ronda inverso o sorteado, rotación de pasadas) con escrituras en `06_event_state.sql`; ranking histórico (`/admin/ranking`); saltos en la ficha del piloto; "Cómo se puntúa" público y estático en `/scoring`. Lógica en `lib/standings/order.ts` y `lib/standings/load.ts`.
 5. **Firmas con identidad real**: la firma de revisión usa el usuario logueado con rol juez, no un nombre escrito. Dos firmas = dos usuarios distintos.
 6. **Pilotos**: cada piloto sube sus propios saltos y ve su historial; los jueces revisan.
+   - **Hecho en código (nov 2026):** opción por jornada `pilot_uploads` (ajustes); `/account` del piloto (sus saltos con puntos y estado, jornadas abiertas) y `/account/events/[id]/upload` (mismo formulario y acción que los jueces, con el piloto fijo; el servidor solo deja cargar saltos propios en jornadas abiertas). El piloto se vincula a su ficha en Usuarios y roles.
 7. **Página pública** de resultados por jornada.
+   - **Hecho en código (nov 2026):** botón Publicar en los ajustes (`set_event_state`); `/results` y `/results/[id]` estáticas desde el CDN, regeneradas como mucho cada 60 s, leídas con la clave pública (RLS: solo jornadas publicadas).
 
 ## Criterios de aceptación de la mudanza
 - Mismos números que la versión vieja para la jornada de ejemplo y para las 333 de la Copa del Mundo.

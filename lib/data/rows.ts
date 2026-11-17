@@ -54,7 +54,7 @@ export interface EventRow {
   id: string; name: string; date: string | null; dz: string; mode: EventMode; rounds: number; team_size: number;
   units: 'm' | 'ft'; lane: boolean; sep_check: boolean; refs: unknown[]; cfg: Record<string, unknown>;
   judging: Record<string, unknown>; validated: Record<string, unknown>; tiebreak: unknown; task_order: unknown;
-  exit_order: unknown; pass_size: number | null; roster: unknown; team_pick: unknown; published: boolean;
+  exit_order: unknown; pass_size: number | null; roster: unknown; team_pick: unknown; published: boolean; pilot_uploads: boolean;
   extra: Record<string, unknown>; created_at: string; updated_at: string;
 }
 
@@ -133,7 +133,7 @@ export function eventToRow(e: LegacyEvent, now: string): EventRow {
     refs: Array.isArray(e.refs) ? e.refs : [], cfg: e.cfg ?? {}, judging: e.judging ?? { profile: 'arg' },
     validated: e.validated ?? {}, tiebreak: e.tiebreak ?? null, task_order: e.taskOrder ?? null, exit_order: e.order ?? null,
     pass_size: numOrNull(e.passSize), roster: e.roster ?? null, team_pick: e.teamPick ?? null,
-    published: false, extra, created_at: iso(e.createdAt, now), updated_at: now,
+    published: false, pilot_uploads: false, extra, created_at: iso(e.createdAt, now), updated_at: now,
   };
 }
 

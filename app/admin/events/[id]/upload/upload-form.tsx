@@ -11,6 +11,9 @@ import { requestJumpUpload, saveJump } from './actions';
 
 type EventInfo = Pick<EventRow, 'id' | 'cfg' | 'lane' | 'refs' | 'sep_check' | 'units' | 'mode' | 'rounds' | 'tiebreak'>;
 interface Props {
+  /** A pilot uploading their own jumps: the pilot is fixed and there is no "new pilot". */
+  ownPilot?: { id: string; name: string };
+  doneHref?: string;
   event: EventInfo;
   pilots: { id: string; name: string }[];
   existing: { pilotId: string; task: string; round: number; void: boolean }[];
@@ -23,10 +26,10 @@ async function gzip(file: File): Promise<Blob> {
   return new Blob([bytes], { type: 'application/gzip' });
 }
 
-export function UploadForm({ event: ev, pilots: initialPilots, existing }: Props) {
+export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilot, doneHref }: Props) {
   const router = useRouter();
   const [pilots, setPilots] = useState(initialPilots);
-  const [pilotId, setPilotId] = useState('');
+  const [pilotId, setPilotId] = useState(ownPilot?.id ?? '');
   const [newName, setNewName] = useState('');
   const [task, setTask] = useState<string>('time');
   const [round, setRound] = useState(1);
@@ -92,13 +95,13 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing }: Props
     <div className="stack">
       <form onSubmit={onSave} className="stack">
         <div className="grid">
-          <label className="field">Piloto
+          {ownPilot ? <p className="field">Piloto<b>{ownPilot.name}</b></p> : <label className="field">Piloto
             <select value={pilotId} onChange={(e) => { setPilotId(e.target.value); computePreview(file, { refIdx, task, round, pilotId: e.target.value }); }}>
               <option value="">Elegí…</option>
               {pilots.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               <option value="__new">+ Piloto nuevo</option>
             </select>
-          </label>
+          </label>}
           {pilotId === '__new' && <label className="field">Nombre del piloto nuevo<input value={newName} onChange={(e) => setNewName(e.target.value)} /></label>}
           <div className="field">Tarea
             <div className="seg" role="group" aria-label="Tarea">
@@ -152,7 +155,7 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing }: Props
             <span className="pill good">{result.replaced ? 'Guardado (reemplazó al anterior)' : 'Guardado'}</span>
           </div>
           <JumpResult jump={result.jump} units={units} exitMin={cfg.exitMin} exitMax={cfg.exitMax} pilotName={name} />
-          <div className="row"><Link href={`/admin/events/${ev.id}`}>Ver los saltos de la jornada</Link></div>
+          <div className="row"><Link href={doneHref ?? `/admin/events/${ev.id}`}>{doneHref ? 'Ver mis saltos' : 'Ver los saltos de la jornada'}</Link></div>
         </div>
       )}
     </div>
