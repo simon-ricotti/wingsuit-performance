@@ -6,6 +6,14 @@ Idioma de la interfaz: español rioplatense, coma decimal, unidades m o ft confi
 
 Idioma del código: **inglés** (identificadores, comentarios, nombres de archivo, rutas/URLs, tablas, roles, buckets, tests). En castellano solo los textos que ve el usuario. `legacy/` queda como está (es la referencia). Los documentos de `docs/` están escritos en castellano, con nombres de archivo en inglés.
 
+## Cómo se trabaja
+- **Siempre simple (ponytail, nivel full):** seguir `.claude/skills/ponytail/SKILL.md` en todo el desarrollo. Es el cambio más chico que resuelve todo, sin abstracciones, opciones ni dependencias que nadie pidió. Nunca se recorta la validación en el servidor, el manejo de errores que evita perder datos, la seguridad ni la accesibilidad.
+- **Pantallas:**
+  - Diseño: `.claude/skills/frontend-design`. Es una herramienta de jueces en la DZ: lo primero es que se lea bien en el celular y al sol, con una sola decisión visual fuerte y nada de decoración.
+  - Código React/Next: `.claude/skills/vercel-react-best-practices`.
+  - Al terminar cada pantalla, revisarla con `.claude/skills/web-design-guidelines`.
+- Los skills se copiaron de sus repos (ponytail MIT, frontend-design de anthropics/skills, los de Vercel de vercel-labs/agent-skills). Del plugin de ponytail se tomó solo la regla, sin los hooks.
+
 ## Regla de oro
 No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competition Rules Wingsuit Flying 2026** (https://www.dfv.aero/downloads/2026_ISC_CR_WS.pdf). Cada regla en el código lleva el número de artículo en un comentario (`// 5.10.6`). Resumen en español con los artículos: `docs/fai-2026-rules-summary.md`. Validación hecha: `docs/world-cup-2025-validation.md`. Donde el reglamento no define algo, la decisión está listada en `docs/decisions.md` y se muestra en la página "Cómo se puntúa".
 
@@ -47,6 +55,8 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
 3. **Carga de saltos**: subida del original a Storage, SHA-256 en servidor, puntaje en servidor, archivo de reemplazos, historial.
    - **Hecho en código (nov 2026).** `/admin/events/[id]/upload`: vista previa en el navegador con el mismo motor; el navegador comprime el archivo y lo sube a Storage (`originals/incoming/`) con URL firmada; el servidor lo baja, calcula SHA-256, puntúa (oficial), mueve el original a `originals/<evento>/<salto>/<sha256>.gz` y llama a `save_jump` (reemplazo con archivo del anterior, separación 5.6.3, reapertura de tarea validada e historial en una transacción). Recalcular (`apply_scores`) y cambiar ajustes de puntaje con saltos cargados recalcula todo en la misma transacción. Lógica en `lib/jumps/` (port de jumpDoc, checkSeparation y recalcEvent); paridad con la versión vieja en `tests/jumps.test.ts`.
 4. **Pantallas** en React, en este orden: clasificación (con vistas), detalle del salto y revisión del juez (montar `review.js`), replay (montar `replay.js` y `replay3d.js`), acta, exportaciones, orden de salida, ranking histórico, pilotos, "Cómo se puntúa".
+   - **Hecho (nov 2026):** clasificación (`/admin/events/[id]`, vistas general, femenina, equipos y por tarea, con la vista en la URL; validación de tareas) y detalle del salto con revisión del juez (`/admin/events/[id]/jumps/[pilot-task-round]`: `review.js` montado tal cual con el motor en `window.WSP`, decisiones, corrección del inicio del carril, firmas, descarga y verificación del original, borrado). Escrituras en `supabase/schemas/05_review.sql`. Lógica de vistas y estado del juzgamiento en `lib/standings/views.ts`.
+   - Las firmas ya usan el usuario logueado (adelanta la etapa 5): una por juez, y el nombre sale del perfil.
 5. **Firmas con identidad real**: la firma de revisión usa el usuario logueado con rol juez, no un nombre escrito. Dos firmas = dos usuarios distintos.
 6. **Pilotos**: cada piloto sube sus propios saltos y ve su historial; los jueces revisan.
 7. **Página pública** de resultados por jornada.

@@ -48,3 +48,51 @@ td.num, th.num { text-align: right; }
 .pill.warn { color: #b06f00; border-color: #d68a00; }
 .seg { display: flex; gap: 4px; flex-wrap: wrap; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Standings: numbers line up, first columns stay visible when scrolling sideways on a phone. */
+:root { --best: #c2410c; --best-bg: #fff1e6; --st-ok: #15803d; --st-decide: #b45309; --st-void: #b91c1c; --st-pending: #9ca3af; }
+@media (prefers-color-scheme: dark) { :root { --best: #fb923c; --best-bg: #2a1a0e; } }
+main.wide { max-width: 1280px; }
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.standings { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.standings th, .standings td { text-align: right; padding: 6px 8px; }
+.standings .l { text-align: left; }
+.standings thead th { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.standings th.grp { text-align: center; color: var(--fg); border-bottom: 2px solid var(--line); }
+.standings .g0 { border-left: 1px solid var(--line); }
+.standings td.rank { font-weight: 700; }
+.standings td.total { font-weight: 800; font-size: 1.05rem; }
+.standings td.avg { color: var(--muted); }
+.standings tbody td:nth-child(-n+2), .standings thead tr:first-child th:nth-child(-n+2) { position: sticky; background: var(--bg); z-index: 1; }
+.standings tbody td:first-child, .standings thead tr:first-child th:first-child { left: 0; }
+.standings tbody td:nth-child(2), .standings thead tr:first-child th:nth-child(2) { left: 2.2rem; }
+.cell { display: inline-flex; flex-direction: column; align-items: flex-end; text-decoration: none; color: inherit; padding: 2px 6px; border-radius: 6px; min-width: 4.2rem; min-height: 44px; justify-content: center; }
+.cell:hover, .cell:focus-visible { background: var(--card); }
+.cell.best { background: var(--best-bg); color: var(--best); }
+.cell small { font-size: .75rem; color: var(--muted); }
+.cell .pen { color: var(--st-void); }
+.st { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 5px; vertical-align: middle; background: var(--st-pending); }
+.st-ok { background: var(--st-ok); } .st-decide { background: var(--st-decide); } .st-void { background: var(--st-void); }
+.seg a { padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; color: var(--fg); font-weight: 600; }
+.seg a[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:root { color-scheme: light dark; }
+h1, h2 { text-wrap: balance; }
+a, button, select { touch-action: manipulation; }
+.seg a:hover { border-color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.standings td.rank, .standings thead tr:first-child th:first-child { width: 2.2rem; min-width: 2.2rem; }
+
+/* Variables that legacy/src/review.js reads to draw its canvases. */
+:root { --ink: var(--fg); --ink-2: var(--muted); --surface: var(--bg); --lane: #0b7f86; --good: #1f7a3d; --warn: #a15c00; --bad: #b3261e; --font-body: system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --lane: #3fc1c9; --good: #5fd08a; --warn: #f0b354; --bad: #ff8a80; } }
+.rvgrid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; }
+.rvgrid canvas { width: 100%; height: 420px; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+@media (max-width: 860px) { .rvgrid { grid-template-columns: 1fr; } .rvgrid canvas { height: 340px; } }
+.mono { font-family: ui-monospace, monospace; word-break: break-all; }
+/* High-visibility orange of the previous platform (also what review.js uses for the window). */
+:root { --accent: #c2410c; }
+@media (prefers-color-scheme: dark) { :root { --accent: #ff7a3d; } }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.slot { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }

@@ -39,7 +39,7 @@ export async function saveEvent(_prev: FormState, form: FormData): Promise<FormS
   if (r.error) return { error: r.error };
   revalidatePath('/admin/events');
   if (!id) redirect(`/admin/events/${r.data}`);
-  revalidatePath(`/admin/events/${id}`);
+  revalidatePath(`/admin/events/${id}`, 'layout');
   return { saved: true, rescored: scores?.length };
 }
 
@@ -69,6 +69,6 @@ export async function recalcEvent(_prev: FormState, form: FormData): Promise<For
     p_text: `Se recalcularon ${p.done} saltos con los ajustes de la jornada`,
   });
   if (r.error) return { error: r.error };
-  revalidatePath(`/admin/events/${id}`);
+  revalidatePath(`/admin/events/${id}`, 'layout');
   return { saved: true, rescored: p.done };
 }

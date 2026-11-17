@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { recalcEvent } from '../actions';
+import { recalcEvent } from '../../actions';
 import type { FormState } from '@/lib/admin/write';
 
 export function RecalcButton({ id }: { id: string }) {

@@ -404,3 +404,64 @@ describe('jump upload and rescoring', () => {
     }
   });
 });
+
+describe('judge review (decisions, signatures, delete, task validation)', () => {
+  const E = 'eabc123', K = [E, 'pdan04', 'distance', 2] as const;
+  const call = async (fn: string, args: string, params: unknown[]) => db.as(SERVICE, `select public.${fn}(${args}) as r`, params);
+  const jump = async () => (await db.as<JumpRow>(SERVICE, `select * from public.jumps where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [...K]))[0];
+  const reviewCount = async () => (await db.as(SERVICE, `select 1 from public.reviews where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [...K])).length;
+  const lastLog = async () => (await db.as<{ text: string; who: string; data: Record<string, unknown> }>(SERVICE, `select * from public.audit_log order by id desc limit 1`))[0];
+
+  test('signatures use the logged-in user: one per judge, none on a void jump', async () => {
+    await db.run(SERVICE, `delete from public.reviews where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [...K]);
+    await db.run(SERVICE, `update public.jumps set void = null where event_id = $1 and pilot_id = $2 and task = $3 and round = $4`, [...K]);
+    await db.run(SERVICE, `update public.events set validated = validated || '{"distance|2": {"by": "x", "at": 1}}' where id = $1`, [E]);
+    await call('sign_review', `$1, $2, $3, $4, 'Juez Uno', 'Revisión firmada por Juez Uno', $5::uuid`, [...K, judge]);
+    await expect(call('sign_review', `$1, $2, $3, $4, 'Juez Uno', 'x', $5::uuid`, [...K, judge])).rejects.toThrow(/Ya firmaste/);
+    await call('sign_review', `$1, $2, $3, $4, 'Admin', 'Revisión firmada por Admin', $5::uuid`, [...K, admin]);
+    expect(await reviewCount()).toBe(2);
+    const [rv] = await db.as<{ reviewer: string }>(SERVICE, `select reviewer from public.reviews where event_id = $1 and pilot_id = $2 and task = $3 and round = $4 order by id limit 1`, [...K]);
+    expect(rv.reviewer).toBe(judge);
+    expect((await db.as<EventRow>(SERVICE, `select validated from public.events where id = $1`, [E]))[0].validated).not.toHaveProperty('distance|2');
+  });
+
+  test('a decision changes only allowed columns, clears signatures when asked and logs before/after', async () => {
+    const before = await jump();
+    await call('update_jump', `$1, $2, $3, $4, $5::jsonb, true, 'Decisión sobre X: carril: 20 %', $6::uuid, 'Juez Uno'`,
+      [...K, JSON.stringify({ lane_decision: 20, distance: 1, notes: 'ok' }), judge]);
+    const after = await jump();
+    expect(after).toMatchObject({ lane_decision: 20, notes: 'ok', distance: before.distance });
+    expect(await reviewCount()).toBe(0);
+    const [dec] = await db.as(SERVICE, `select * from public.audit_log where text like 'Decisión%' order by id desc limit 1`);
+    expect(dec).toMatchObject({ text: 'Decisión sobre X: carril: 20 %', who: 'Juez Uno', data: { after: { lane_decision: 20, notes: 'ok' }, reviewsCleared: true } });
+    await call('sign_review', `$1, $2, $3, $4, 'Juez Uno', 'x', $5::uuid`, [...K, judge]);
+    await call('update_jump', `$1, $2, $3, $4, '{"void": true, "flag_decision": "rejump"}'::jsonb, false, 'x', $5::uuid, 'Juez Uno'`, [...K, judge]);
+    expect(await reviewCount()).toBe(1);
+    await expect(call('sign_review', `$1, $2, $3, $4, 'Admin', 'x', $5::uuid`, [...K, admin])).rejects.toThrow(/anulado/);
+  });
+
+  test('task validation sets and removes the slot with who validated it', async () => {
+    await call('set_task_validation', `$1, 'speed|1', true, 'Se validó la tarea Velocidad R1', $2::uuid, 'Juez Uno'`, [E, judge]);
+    expect((await db.as<EventRow>(SERVICE, `select validated from public.events where id = $1`, [E]))[0].validated).toMatchObject({ 'speed|1': { by: 'Juez Uno' } });
+    await call('set_task_validation', `$1, 'speed|1', false, 'Se reabrió la tarea Velocidad R1', $2::uuid, 'Juez Uno'`, [E, judge]);
+    expect((await db.as<EventRow>(SERVICE, `select validated from public.events where id = $1`, [E]))[0].validated).not.toHaveProperty('speed|1');
+    expect((await lastLog()).text).toBe('Se reabrió la tarea Velocidad R1');
+  });
+
+  test('deleting a jump archives it with the judge as actor', async () => {
+    await call('delete_jump', `$1, $2, $3, $4, 'Se borró el salto de X; quedó archivado', $5::uuid, 'Juez Uno'`, [...K, judge]);
+    expect(await jump()).toBeUndefined();
+    const [a] = await db.as<{ kind: string; key: string; deleted: boolean; archived_by: string; reason: string }>(SERVICE, `select * from public.archive order by id desc limit 1`);
+    expect(a).toMatchObject({ kind: 'jump', key: 'pdan04-distance-2', deleted: true, archived_by: judge, reason: 'Borrado por un juez' });
+    await expect(call('delete_jump', `$1, $2, $3, $4, 'x', $5::uuid, 'x'`, [...K, judge])).rejects.toThrow(/no existe/);
+  });
+
+  test('review functions cannot be called from the browser', async () => {
+    for (const who of [ANON, { role: 'authenticated', uid: judge } as const]) {
+      await expect(db.run(who, `select public.sign_review('e', 'p', 'time', 1, 'x', 'x', null)`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.update_jump('e', 'p', 'time', 1, '{}'::jsonb, false, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.delete_jump('e', 'p', 'time', 1, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
+      await expect(db.run(who, `select public.set_task_validation('e', 'time|1', true, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
+    }
+  });
+});

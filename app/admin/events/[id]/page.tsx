@@ -2,101 +2,173 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
-import { formValuesOf, judgingOf, JUDGING_PROFILES } from '@/lib/events/settings';
-import type { EventRow, JumpRow } from '@/lib/data/rows';
-import { es, TASKS } from '@/lib/engine';
-import { roundLabel, TASK_LABEL, TASK_UNIT } from '@/lib/jumps/score';
-import { EventForm } from '../event-form';
-import { DeleteEvent } from './delete-event';
-import { RecalcButton } from './recalc-button';
-import { History } from '../../history';
+import { rowToJump, type EventRow, type JumpRow, type ReviewRow } from '@/lib/data/rows';
+import { TASKS, type JumpRecord, type Task } from '@/lib/engine';
+import { TASK_LABEL, TASK_UNIT } from '@/lib/jumps/score';
+import { TaskValidation, type Slot } from './task-validation';
+import { roundLabel } from '@/lib/jumps/score';
+import { eventStandings, femaleRows, fmt, fmtTask, jumpStatus, roundsShown, taskRows, teamRows, type PilotInfo } from '@/lib/standings/views';
 
-export const metadata = { title: 'Jornada · Wingsuit Performance' };
-export const maxDuration = 60;
+export const metadata = { title: 'Clasificación · Wingsuit Performance' };
 
-type JumpListRow = Pick<JumpRow, 'pilot_id' | 'task' | 'round' | 'ok' | 'time' | 'distance' | 'speed' | 'lane_pen' | 'lane_outside' | 'sep_violation' | 'void' | 'flags' | 'uploaded_by' | 'file_name'>;
+const jid = (j: { pilotId: string; task: string; round: number | string }) => `${j.pilotId}-${j.task}-${j.round}`;
 
-export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const s = await requireRole('admin', 'judge');
+export default async function StandingsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ view?: string }> }) {
+  const [{ id }, { view = 'general' }] = await Promise.all([params, searchParams]);
+  await requireRole('admin', 'judge');
   const supabase = await createClient();
-  const { data: ev } = await supabase.from('events').select('*').eq('id', id).maybeSingle<EventRow>();
-  if (!ev) notFound();
-  // Only the columns the list shows: tracks and decisions are not read here.
-  const [{ data: jumpRows }, { data: pilots }] = await Promise.all([
-    supabase.from('jumps').select('pilot_id, task, round, ok, time, distance, speed, lane_pen, lane_outside, sep_violation, void, flags, uploaded_by, file_name').eq('event_id', id).returns<JumpListRow[]>(),
-    supabase.from('pilots').select('id, name'),
+  const [{ data: ev }, { data: rows }, { data: reviews }, { data: pilots }] = await Promise.all([
+    supabase.from('events').select('*').eq('id', id).maybeSingle<EventRow>(),
+    supabase.from('jumps').select('*').eq('event_id', id).returns<JumpRow[]>(),
+    supabase.from('reviews').select('pilot_id, task, round, reviewer_name, legacy_uid, at').eq('event_id', id).returns<ReviewRow[]>(),
+    supabase.from('pilots').select('id, name, gender, team'),
   ]);
-  const jumps = (jumpRows ?? []).sort((a, b) => a.round - b.round || TASKS.indexOf(a.task as never) - TASKS.indexOf(b.task as never));
-  const name = new Map((pilots ?? []).map((p) => [p.id as string, p.name as string]));
-  const pilotName = (pid: string) => name.get(pid) ?? pid;
-  const values = formValuesOf(ev, ev.date ?? '');
-  const result = (j: JumpListRow) => {
-    if (j.void) return 'anulado';
-    if (!j.ok) return 'sin resultado';
-    const v = j[j.task as 'time' | 'distance' | 'speed'];
-    return `${es(+v.toFixed(j.task === 'distance' ? 0 : 1))} ${TASK_UNIT[j.task as keyof typeof TASK_UNIT]}`;
+  if (!ev) notFound();
+
+  const byId = new Map((pilots ?? []).map((p) => [p.id as string, p as PilotInfo]));
+  const pilot = (pid: string) => byId.get(pid);
+  const name = (pid: string) => pilot(pid)?.name ?? pid;
+  const { st, jumps } = eventStandings(ev, (rows ?? []).map((r) => rowToJump(r, reviews ?? [])));
+  const rounds = roundsShown(ev, st);
+  const tasks = TASKS.filter((t) => rounds[t].length);
+  const female = femaleRows(st, pilot);
+  const teams = teamRows(ev, st, pilot);
+  const views: [string, string][] = [['general', 'General'], ...(female.length ? [['female', 'Femenina'] as [string, string]] : []),
+    ...(teams.length ? [['team', 'Equipos'] as [string, string]] : []), ...tasks.map((t) => [t, TASK_LABEL[t]] as [string, string])];
+  const current = views.some(([v]) => v === view) ? view : 'general';
+  const tbTask = (ev.tiebreak as { task?: Task } | null)?.task;
+  const validated = (ev.validated ?? {}) as Record<string, { by?: string }>;
+  const bySlot = new Map<string, JumpRecord[]>();
+  for (const j of jumps) bySlot.set(`${j.task}|${j.round}`, [...(bySlot.get(`${j.task}|${j.round}`) ?? []), j]);
+  const slots: Slot[] = [...bySlot.entries()]
+    .sort(([a], [b]) => +a.split('|')[1] - +b.split('|')[1] || TASKS.indexOf(a.split('|')[0] as Task) - TASKS.indexOf(b.split('|')[0] as Task))
+    .map(([key, list]) => {
+      const live = list.filter((j) => !j.void), [t, n] = key.split('|');
+      return { key, label: `${TASK_LABEL[t as Task]} ${roundLabel(+n)}`, live: live.length, voided: list.length - live.length,
+        done: live.filter((j) => jumpStatus(ev, j).code === 'ok').length, validatedBy: validated[key] ? validated[key].by ?? '' : null };
+    });
+
+  const cell = (j: JumpRecord | undefined, t: Task) => {
+    if (!j) return <span className="muted">·</span>;
+    const s = jumpStatus(ev, j);
+    return (
+      <Link className={'cell' + (j._isBest ? ' best' : '')} href={`/admin/events/${id}/jumps/${jid(j)}`} title={s.label}>
+        <span><b>{j.ok ? fmtTask(t, j._result) : '0'}</b><i className={`st st-${s.code}`} aria-hidden="true" /><span className="sr-only">{s.label}</span></span>
+        <small>{j._pen ? <span className="pen">−{j._pen}% · </span> : null}{fmt(j._points, 1)}%</small>
+      </Link>
+    );
   };
-  const notes = (j: JumpListRow) => [
-    j.lane_pen ? `carril −${j.lane_pen} %` : '',
-    j.sep_violation ? 'separación' : '',
-    ...((j.flags as { code: string; level: string }[]) ?? []).filter((f) => f.level === 'warn')
-      .map((f) => ({ exit_low: 'salida baja', exit_high: 'salida alta', exit_gap: 'hueco antes de la salida', sep: 'SEP alto', hz: 'pocos Hz', gap: 'huecos', error: 'error' } as Record<string, string>)[f.code] ?? f.code),
-  ].filter(Boolean).join(', ');
 
   return (
-    <main>
+    <main className="wide">
       <p><Link href="/admin/events">← Jornadas</Link></p>
       <h1>{ev.name}</h1>
-      <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(' · ')} · {jumps.length} saltos · {ev.published ? 'publicada' : 'sin publicar'}</p>
-      <div className="row"><Link className="button" href={`/admin/events/${id}/upload`}>Cargar salto</Link></div>
+      <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(', ')}{ev.published ? '' : ' (sin publicar)'}</p>
+      <nav className="row">
+        <Link className="button" href={`/admin/events/${id}/upload`}>Cargar salto</Link>
+        <Link href={`/admin/events/${id}/settings`}>Ajustes e historial</Link>
+      </nav>
 
-      <h2>Saltos</h2>
-      {!jumps.length ? <p className="sub">Todavía no hay saltos cargados.</p> : (
-        <table>
-          <thead><tr><th>Tarea</th><th>Ronda</th><th>Piloto</th><th className="num">Resultado</th><th>Avisos</th><th>Cargado por</th></tr></thead>
-          <tbody>
-            {jumps.map((j) => (
-              <tr key={`${j.pilot_id}-${j.task}-${j.round}`}>
-                <td>{TASK_LABEL[j.task as keyof typeof TASK_LABEL]}</td>
-                <td>{roundLabel(j.round)}</td>
-                <td>{pilotName(j.pilot_id)}</td>
-                <td className="num">{result(j)}</td>
-                <td className="small">{notes(j) || '–'}</td>
-                <td className="small">{j.uploaded_by || '–'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <p className="sub small">La clasificación con porcentajes y puestos llega con las pantallas (etapa 4).</p>
-
-      {s.role === 'admin' ? (
+      {!st.rows.some((r) => r.jumps) ? (
+        <p className="sub">Todavía no hay saltos en esta jornada. Tocá <b>Cargar salto</b> para subir el primer archivo.</p>
+      ) : (
         <>
-          <h2>Ajustes</h2>
-          <EventForm initial={values} jumps={jumps.length} />
-          {jumps.length > 0 && (
+          <nav className="seg" aria-label="Clasificación">
+            {views.map(([v, label]) => <Link key={v} href={`?view=${v}`} aria-current={v === current ? 'page' : undefined}>{label}</Link>)}
+          </nav>
+
+          {current === 'general' && (
             <>
-              <h2>Recalcular</h2>
-              <p className="sub">Vuelve a puntuar los {jumps.length} saltos guardados desde sus tracks con los ajustes actuales. Las decisiones de los jueces se mantienen.</p>
-              <RecalcButton id={ev.id} />
+              <div className="scroll-x">
+                <table className="standings">
+                  <thead>
+                    <tr><th rowSpan={2}>#</th><th rowSpan={2} className="l">Piloto</th>
+                      {tasks.map((t) => <th key={t} className="grp" colSpan={rounds[t].length + 1}>{TASK_LABEL[t]} ({TASK_UNIT[t]})</th>)}
+                      <th rowSpan={2} className="g0">Total</th></tr>
+                    <tr>{tasks.flatMap((t) => [...rounds[t].map((n, i) => <th key={`${t}${n}`} className={i ? '' : 'g0'}>R{n}</th>), <th key={`${t}p`}>Pts</th>])}</tr>
+                  </thead>
+                  <tbody>
+                    {st.rows.filter((r) => r.jumps).map((r) => (
+                      <tr key={r.pilotId}>
+                        <td className="rank">{r.rank}</td>
+                        <td className="l"><b>{name(r.pilotId)}</b>{pilot(r.pilotId)?.team ? <span className="small muted"> {pilot(r.pilotId)!.team}</span> : null}
+                          {r.tb != null && tbTask ? <span className="pill small" title="Salto de desempate"> D {fmtTask(tbTask, r.tb)}</span> : null}</td>
+                        {tasks.flatMap((t) => [
+                          ...rounds[t].map((n, i) => <td key={`${t}${n}`} className={i ? '' : 'g0'}>{cell(r.tasks[t]?.cells[n], t)}</td>),
+                          <td key={`${t}p`} className="avg">{fmt(r.tasks[t]?.points ?? 0, 1)}</td>,
+                        ])}
+                        <td className="total g0">{fmt(r.totalRounded, 1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="sub small">Cada resultado vale un porcentaje del mejor de su ronda; por tarea se promedian las rondas voladas y el total es la suma de las tres tareas (FAI 5.10). El mejor de cada ronda está resaltado. Tocá un resultado para ver el detalle.</p>
+              {ev.mode === 'competition' && (
+                <div className="row">
+                  {Array.from({ length: ev.rounds }, (_, i) => i + 1).map((n) => {
+                    const full = TASKS.every((t) => st.rounds[t].includes(n));
+                    return <span key={n} className={'pill' + (full ? ' good' : '')}>Ronda {n} {full ? 'completa' : 'incompleta'}</span>;
+                  })}
+                  <span className="small muted">Una ronda es válida cuando tiene las tres tareas (FAI 5.4.3).</span>
+                </div>
+              )}
+              <TaskValidation event={id} slots={slots} />
             </>
           )}
-        </>
-      ) : (
-        <p>Perfil de juzgamiento: {judgingOf(ev.judging).profile === 'custom' ? 'Personalizado' : JUDGING_PROFILES[judgingOf(ev.judging).profile as 'arg' | 'fai'].label}.
-          Los ajustes los cambia el organizador.</p>
-      )}
 
-      <h2>Historial</h2>
-      <History eventId={ev.id} />
+          {current === 'female' && (
+            <>
+              <div className="scroll-x">
+                <table className="standings">
+                  <thead><tr><th>#</th><th className="l">Piloto</th>{TASKS.map((t) => <th key={t}>{TASK_LABEL[t]}</th>)}<th>Total</th><th className="l">General</th></tr></thead>
+                  <tbody>{female.map((r) => (
+                    <tr key={r.pilotId}><td className="rank">{r._rank}</td><td className="l"><b>{name(r.pilotId)}</b></td>
+                      {TASKS.map((t) => <td key={t}>{fmt(r.tasks[t]?.points ?? 0, 1)}</td>)}
+                      <td className="total">{fmt(r.totalRounded, 1)}</td><td className="l muted">{r.rank}.º</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              {female.length < 4 && <p className="note warn small">La clasificación femenina tiene {female.length} participante{female.length === 1 ? '' : 's'}. Con menos de cuatro no es válida para entregar medallas (FAI 5.1.2).</p>}
+              <p className="sub small">Mismos puntajes que la general, ordenados solo entre las pilotos de la categoría (FAI 5.1.1, 5.1.4 y 5.10.9).</p>
+            </>
+          )}
 
-      {s.role === 'admin' && (
-        <>
-          <h2>Borrar la jornada</h2>
-          {jumps.length > 0
-            ? <p className="sub">Tiene saltos cargados: no se puede borrar.</p>
-            : <DeleteEvent id={ev.id} name={ev.name} />}
+          {current === 'team' && (
+            <>
+              <div className="scroll-x">
+                <table className="standings">
+                  <thead><tr><th>#</th><th className="l">Equipo</th><th className="l">Integrantes</th><th>Total</th></tr></thead>
+                  <tbody>{teams.map((t) => (
+                    <tr key={t.name}>
+                      <td className="rank">{t._rank || ''}</td>
+                      <td className="l"><b>{t.name}</b>{t.state === 'short' && <span className="pill warn"> {t.members.length} de {ev.team_size}</span>}</td>
+                      <td className="l small">{(t.state === 'pick' ? t.all : t.members).map((r) => `${name(r.pilotId)} ${fmt(r.totalRounded, 1)}`).join(', ')}</td>
+                      <td className="total">{t.state === 'pick' ? <span className="pill warn">Falta nominar</span> : fmt(t.totalRounded, 1)}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              {teams.filter((t) => t._rank).length < 4 && <p className="note warn small">La clasificación por equipos tiene {teams.filter((t) => t._rank).length} participantes. Con menos de cuatro no es válida para entregar medallas (FAI 5.1.2).</p>}
+              <p className="sub small">Puntaje del equipo: suma del total de cada integrante (FAI 5.10.10). Integrantes por equipo: {ev.team_size} (FAI 8.4; se cambia en los ajustes).</p>
+            </>
+          )}
+
+          {(TASKS as readonly string[]).includes(current) && (() => {
+            const t = current as Task, list = taskRows(st, t);
+            return (
+              <div className="scroll-x">
+                <table className="standings">
+                  <thead><tr><th>#</th><th className="l">Piloto</th>{st.rounds[t].map((n) => <th key={n}>R{n}</th>)}<th>Puntos</th></tr></thead>
+                  <tbody>{list.map((r) => (
+                    <tr key={r.pilotId}><td className="rank">{r._rank}</td><td className="l"><b>{name(r.pilotId)}</b></td>
+                      {st.rounds[t].map((n) => <td key={n}>{cell(r.tasks[t]!.cells[n], t)}</td>)}
+                      <td className="total">{fmt(r.tasks[t]!.points, 1)}</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            );
+          })()}
         </>
       )}
     </main>

@@ -13,7 +13,7 @@ export default async function NewEventPage() {
     <main>
       <p><Link href="/admin/events">← Jornadas</Link></p>
       <h1>Nueva jornada</h1>
-      <EventForm initial={formValuesOf(null, today())} scoringLocked={false} />
+      <EventForm initial={formValuesOf(null, today())} jumps={0} />
     </main>
   );
 }

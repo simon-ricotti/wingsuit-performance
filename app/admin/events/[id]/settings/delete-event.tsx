@@ -1,6 +1,6 @@
 'use client';
 import { useActionState, useState } from 'react';
-import { deleteEvent } from '../actions';
+import { deleteEvent } from '../../actions';
 import type { FormState } from '@/lib/admin/write';
 
 // Two-step delete on the page itself (no browser confirm dialog).
