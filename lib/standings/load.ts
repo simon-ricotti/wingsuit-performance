@@ -21,3 +21,24 @@ export async function loadEventResults(supabase: SupabaseClient, id: string) {
 
 /** File name from the event name: "Copa AVA, fecha 3" → "copa-ava-fecha-3". */
 export const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'jornada';
+
+/**
+ * Every jump of every event, scored within its own event (ranking and pilot history).
+ * shortcut: reads all jumps on each view (~2 KB per jump, 600 per season); move to a summary table if it grows a lot.
+ */
+export async function loadAllResults(supabase: SupabaseClient) {
+  const [{ data: events }, { data: pilots }] = await Promise.all([
+    supabase.from('events').select('*').order('date', { ascending: false, nullsFirst: false }).returns<EventRow[]>(),
+    supabase.from('pilots').select('id, name, gender, team, suit').order('name'),
+  ]);
+  const rows: JumpRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase.from('jumps').select('*').order('event_id').order('pilot_id').order('task').order('round').range(from, from + 999).returns<JumpRow[]>();
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  const byEvent = new Map<string, JumpRow[]>();
+  for (const r of rows) byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), r]);
+  const results = (events ?? []).map((ev) => ({ ev, ...eventStandings(ev, (byEvent.get(ev.id) ?? []).map((r) => rowToJump(r))) }));
+  return { results, pilots: pilots ?? [], name: (pid: string) => (pilots ?? []).find((p) => p.id === pid)?.name ?? 'Piloto borrado' };
+}

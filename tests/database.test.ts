@@ -508,3 +508,15 @@ test('export: a full backup built from the imported rows matches the original ba
   // And it imports again (same format, same checks).
   expect(prepareImport(parseBackup(JSON.stringify(out))).warnings).toEqual([]);
 });
+
+test('competition state: only whitelisted fields change, with before/after in the log; not callable from the browser', async () => {
+  await db.as(SERVICE, `select public.set_event_state('eabc123', $1::jsonb, 'Se sorteó la tarea de desempate: Tiempo', $2::uuid, 'Juez Uno')`,
+    [JSON.stringify({ tiebreak: { task: 'time', pilots: ['pana01'] }, task_order: ['speed', 'time', 'distance'], published: true, name: 'X' }), judge]);
+  const [ev] = await db.as<EventRow>(SERVICE, `select * from public.events where id = 'eabc123'`);
+  expect(ev).toMatchObject({ tiebreak: { task: 'time' }, task_order: ['speed', 'time', 'distance'], published: false });
+  expect(ev.name).not.toBe('X');
+  const [l] = await db.as<{ text: string; data: { after: Record<string, unknown> } }>(SERVICE, `select * from public.audit_log order by id desc limit 1`);
+  expect(l.text).toBe('Se sorteó la tarea de desempate: Tiempo');
+  expect(Object.keys(l.data.after).sort()).toEqual(['task_order', 'tiebreak']);
+  await expect(db.run({ role: 'authenticated', uid: admin }, `select public.set_event_state('eabc123', '{}'::jsonb, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
+});

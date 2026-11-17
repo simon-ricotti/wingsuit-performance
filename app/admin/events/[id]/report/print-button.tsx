@@ -1,4 +1,4 @@
 'use client';
-export function PrintButton() {
-  return <button type="button" onClick={() => window.print()}>Imprimir o guardar como PDF</button>;
+export function PrintButton({ label = 'Imprimir o guardar como PDF' }: { label?: string }) {
+  return <button type="button" onClick={() => window.print()}>{label}</button>;
 }

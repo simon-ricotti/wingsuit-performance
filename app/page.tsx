@@ -1,5 +1,6 @@
 // Minimal page: lists the parameters the engine (lib/engine) scores with, each with its FAI 2026
 // rule article. The real screens arrive in stage 4. UI text is in Rioplatense Spanish.
+import Link from 'next/link';
 import { DEFAULT_CFG } from '@/lib/engine';
 
 const num = (n: number) => n.toLocaleString('es-AR');
@@ -21,6 +22,7 @@ export default function Home() {
     <main>
       <h1>Wingsuit Performance</h1>
       <p className="sub">Puntaje FAI ISC Wingsuit Flying 2026 · DZ AVA (Alvear, Rosario). En construcción.</p>
+      <p><Link href="/scoring">Cómo se puntúa</Link> · <Link href="/login">Ingresar</Link></p>
       <table>
         <thead><tr><th>Regla</th><th>Valor</th><th>Art.</th></tr></thead>
         <tbody>

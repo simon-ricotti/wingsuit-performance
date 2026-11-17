@@ -143,3 +143,11 @@ a, button, select { touch-action: manipulation; }
   .standings tbody td:nth-child(-n+2) { position: static; }
 }
 .acta .standings td, .acta .standings th { position: static !important; }
+.plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.plan h3 { margin: 0 0 6px; }
+.pass { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; }
+.pass ol { margin: 4px 0 0 18px; padding: 0; }
+@media print { .order-round { break-inside: avoid; } .noprint { display: none !important; } }
+.rules li { margin-bottom: 6px; }
+.pen { color: var(--st-void); }
+.stack > button { align-self: flex-start; }

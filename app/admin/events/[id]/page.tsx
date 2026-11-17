@@ -6,6 +6,8 @@ import { rowToJump, type EventRow, type JumpRow, type ReviewRow } from '@/lib/da
 import { TASKS, type JumpRecord, type Task } from '@/lib/engine';
 import { TASK_LABEL, TASK_UNIT } from '@/lib/jumps/score';
 import { TaskValidation, type Slot } from './task-validation';
+import { StateForm } from './state-form';
+import { topTies } from '@/lib/standings/order';
 import { roundLabel } from '@/lib/jumps/score';
 import { eventStandings, femaleRows, fmt, fmtTask, jumpStatus, roundsShown, taskRows, teamRows, type PilotInfo } from '@/lib/standings/views';
 
@@ -36,7 +38,8 @@ export default async function StandingsPage({ params, searchParams }: { params: 
   const views: [string, string][] = [['general', 'General'], ...(female.length ? [['female', 'Femenina'] as [string, string]] : []),
     ...(teams.length ? [['team', 'Equipos'] as [string, string]] : []), ...tasks.map((t) => [t, TASK_LABEL[t]] as [string, string])];
   const current = views.some(([v]) => v === view) ? view : 'general';
-  const tbTask = (ev.tiebreak as { task?: Task } | null)?.task;
+  const tb = ev.tiebreak as { task?: Task; by?: string } | null, tbTask = tb?.task;
+  const ties = topTies(st);
   const validated = (ev.validated ?? {}) as Record<string, { by?: string }>;
   const bySlot = new Map<string, JumpRecord[]>();
   for (const j of jumps) bySlot.set(`${j.task}|${j.round}`, [...(bySlot.get(`${j.task}|${j.round}`) ?? []), j]);
@@ -67,6 +70,7 @@ export default async function StandingsPage({ params, searchParams }: { params: 
       <nav className="row">
         <Link className="button" href={`/admin/events/${id}/upload`}>Cargar salto</Link>
         <Link href={`/admin/events/${id}/replay`}>Replay</Link>
+        <Link href={`/admin/events/${id}/order`}>Orden de salida</Link>
         <Link href={`/admin/events/${id}/report`}>Acta y exportar</Link>
         <Link href={`/admin/events/${id}/settings`}>Ajustes e historial</Link>
       </nav>
@@ -115,6 +119,25 @@ export default async function StandingsPage({ params, searchParams }: { params: 
                   <span className="small muted">Una ronda es válida cuando tiene las tres tareas (FAI 5.4.3).</span>
                 </div>
               )}
+              {(ties.length > 0 || tbTask) && (
+                <section className="stack">
+                  <h2>Desempate</h2>
+                  {ties.map((g) => <p key={g.rank}>Empate en el puesto {g.rank} entre {g.rows.map((r) => name(r.pilotId)).join(' y ')} ({fmt(g.rows[0].totalRounded, 1)} puntos).</p>)}
+                  {tbTask ? (
+                    <>
+                      <p>Tarea de desempate sorteada: <b>{TASK_LABEL[tbTask]}</b>{tb?.by ? ` (sorteó ${tb.by})` : ''}. Cargá cada salto de desempate en <b>Cargar salto</b>, ronda “Salto de desempate”.</p>
+                      {st.tiebreak.length > 0 && <p className="small">{st.tiebreak.map((j) => `${name(j.pilotId)}: ${fmtTask(j.task, j._result)} ${TASK_UNIT[j.task as Task]}`).join(', ')}</p>}
+                      {ties.length > 0 && st.tiebreak.length > 0 && <p className="sub small">Si el empate sigue después del salto de desempate, los pilotos comparten el puesto (FAI 5.10.6.2).</p>}
+                      <StateForm event={id} op="tiebreak-clear" submit="Quitar el desempate" />
+                    </>
+                  ) : (
+                    <>
+                      <p className="sub small">FAI 5.10.6: un empate en los tres primeros puestos se define con un salto de desempate. La tarea la sortea el Juez Principal.</p>
+                      <StateForm event={id} op="tiebreak-draw" submit="Sortear la tarea de desempate" busy="Sorteando…" />
+                    </>
+                  )}
+                </section>
+              )}
               <TaskValidation event={id} slots={slots} />
             </>
           )}
@@ -152,6 +175,18 @@ export default async function StandingsPage({ params, searchParams }: { params: 
                 </table>
               </div>
               {teams.filter((t) => t._rank).length < 4 && <p className="note warn small">La clasificación por equipos tiene {teams.filter((t) => t._rank).length} participantes. Con menos de cuatro no es válida para entregar medallas (FAI 5.1.2).</p>}
+              {teams.filter((t) => t.state === 'pick').map((t) => {
+                const cur = ((ev.team_pick ?? {}) as Record<string, string[]>)[t.name] ?? [];
+                return (
+                  <section key={t.name} className="stack">
+                    <h2>Nominar {ev.team_size} integrantes de {t.name}</h2>
+                    <p className="sub small">El equipo tiene {t.all.length} pilotos en la jornada. El reglamento pide nominar {ev.team_size} (FAI 8.4.2).</p>
+                    <StateForm event={id} op="team-pick" hidden={{ team: t.name }} submit="Guardar nominación">
+                      {t.all.map((r) => <label key={r.pilotId} className="chk"><input type="checkbox" name="pilot" value={r.pilotId} defaultChecked={cur.includes(r.pilotId)} /> {name(r.pilotId)}</label>)}
+                    </StateForm>
+                  </section>
+                );
+              })}
               <p className="sub small">Puntaje del equipo: suma del total de cada integrante (FAI 5.10.10). Integrantes por equipo: {ev.team_size} (FAI 8.4; se cambia en los ajustes).</p>
             </>
           )}
