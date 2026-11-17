@@ -26,6 +26,7 @@ declare
   p jsonb;
   old_row public.jumps;
   new_row public.jumps;
+  removed jsonb := '[]';
 begin
   perform public.begin_admin_write(p_actor);
   perform 1 from public.events where id = p_event for update;
@@ -39,12 +40,14 @@ begin
     t_val = new_row.t_val, lane_dev = new_row.lane_dev, lane_outside = new_row.lane_outside, lane_pen = new_row.lane_pen
   where (event_id, pilot_id, task, round) = (p_event, p_pilot, p_task, p_round);
   if p_clear_reviews then
-    delete from public.reviews where (event_id, pilot_id, task, round) = (p_event, p_pilot, p_task, p_round);
+    -- Nothing is deleted without a copy: the removed signatures go into the audit log entry.
+    with d as (delete from public.reviews where (event_id, pilot_id, task, round) = (p_event, p_pilot, p_task, p_round) returning *)
+    select coalesce(jsonb_agg(to_jsonb(d) order by d.at), '[]') into removed from d;
   end if;
   insert into public.audit_log (event_id, actor, who, text, jump_key, data)
     values (p_event, p_actor, coalesce(p_who, ''), p_text, public.jump_key(p_pilot, p_task, p_round),
             jsonb_build_object('before', (select jsonb_object_agg(k, to_jsonb(old_row) -> k) from jsonb_object_keys(p) k),
-                               'after', p, 'reviewsCleared', p_clear_reviews));
+                               'after', p, 'reviewsRemoved', removed));
   perform public.reopen_slot(p_event, p_task, p_round, p_actor, p_who);
 end $$;
 

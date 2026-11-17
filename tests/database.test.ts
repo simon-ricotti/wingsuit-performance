@@ -433,7 +433,8 @@ describe('judge review (decisions, signatures, delete, task validation)', () => 
     expect(after).toMatchObject({ lane_decision: 20, notes: 'ok', distance: before.distance });
     expect(await reviewCount()).toBe(0);
     const [dec] = await db.as(SERVICE, `select * from public.audit_log where text like 'Decisión%' order by id desc limit 1`);
-    expect(dec).toMatchObject({ text: 'Decisión sobre X: carril: 20 %', who: 'Juez Uno', data: { after: { lane_decision: 20, notes: 'ok' }, reviewsCleared: true } });
+    expect(dec).toMatchObject({ text: 'Decisión sobre X: carril: 20 %', who: 'Juez Uno', data: { after: { lane_decision: 20, notes: 'ok' } } });
+    expect(((dec as { data: { reviewsRemoved: { reviewer_name: string }[] } }).data.reviewsRemoved).map((x) => x.reviewer_name)).toEqual(['Juez Uno', 'Admin']);
     await call('sign_review', `$1, $2, $3, $4, 'Juez Uno', 'x', $5::uuid`, [...K, judge]);
     await call('update_jump', `$1, $2, $3, $4, '{"void": true, "flag_decision": "rejump"}'::jsonb, false, 'x', $5::uuid, 'Juez Uno'`, [...K, judge]);
     expect(await reviewCount()).toBe(1);

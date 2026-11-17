@@ -96,3 +96,5 @@ a, button, select { touch-action: manipulation; }
 @media (prefers-color-scheme: dark) { :root { --accent: #ff7a3d; } }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .slot { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+/* Dark text on the bright dark-mode orange (white on it is too low-contrast). */
+@media (prefers-color-scheme: dark) { a.button, .seg a[aria-current="page"], .seg button[aria-pressed="true"] { color: #1a0d05; } }
