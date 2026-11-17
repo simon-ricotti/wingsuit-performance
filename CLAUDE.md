@@ -39,6 +39,7 @@ Idioma del código: **inglés** (identificadores, comentarios, nombres de archiv
   - `app/results`: el público.
   - `app/scoring`: "Cómo se puntúa".
   - `app/help`: ayuda por rol para jueces, organizadores y pilotos. Actualizarla cuando cambie un flujo o el texto de un botón.
+  - `app/judging`: reglamento FAI para jueces (fuente: `docs/fai-2026-rules-summary.md`), con recuadros “En el sistema”. Actualizarla si cambia el reglamento o cómo lo aplica el sistema.
   - `supabase/schemas/01..06`: la base.
 - **Pendientes conocidos, no urgentes:**
   - la tabla de clasificación está repetida en tres pantallas (admin, acta y pública);

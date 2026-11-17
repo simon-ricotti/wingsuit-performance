@@ -155,3 +155,7 @@ a, button, select { touch-action: manipulation; }
 .help h3 { margin: 18px 0 6px; font-size: 1rem; }
 .help ol, .help ul { padding-left: 22px; }
 .help code { font-size: .9em; }
+.rules-t { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: .95rem; }
+.rules-t th, .rules-t td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.rules-t th { color: var(--muted); font-size: .85rem; }
+.help .note { margin: 10px 0 4px; }

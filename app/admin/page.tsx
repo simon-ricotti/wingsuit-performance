@@ -16,7 +16,7 @@ export default async function AdminPage() {
           <li><Link href="/admin/events">Jornadas</Link></li>
           <li><Link href="/admin/pilots">Pilotos</Link></li>
           <li><Link href="/admin/ranking">Ranking histórico</Link></li>
-          <li><Link href="/help">Ayuda</Link></li>
+          <li><Link href="/help">Ayuda</Link> · <Link href="/judging">Reglamento para jueces</Link></li>
           {s.role === 'admin' && <li><Link href="/admin/users">Usuarios y roles</Link></li>}
           {s.role === 'admin' && <li><Link href="/admin/import">Importar una jornada de la versión anterior</Link></li>}
         </ul>

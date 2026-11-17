@@ -9,7 +9,7 @@ export default function HelpPage() {
     <main className="rules help">
       <p><Link href="/">← Inicio</Link></p>
       <h1>Ayuda</h1>
-      <p>Cómo usar el sistema en una jornada, según tu rol. Para el detalle de las reglas, mirá <Link href="/scoring">Cómo se puntúa</Link>.</p>
+      <p>Cómo usar el sistema en una jornada, según tu rol. Para el reglamento, mirá <Link href="/judging">Reglamento para jueces</Link> y <Link href="/scoring">Cómo se puntúa</Link>.</p>
       <nav aria-label="Secciones" className="row">
         <a href="#entrar">Entrar</a> · <a href="#organizador">Organizador</a> · <a href="#juez">Juez</a> · <a href="#piloto">Piloto</a> · <a href="#problemas">Problemas frecuentes</a>
       </nav>
