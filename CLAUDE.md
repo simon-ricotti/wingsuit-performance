@@ -6,6 +6,45 @@ Idioma de la interfaz: español rioplatense, coma decimal, unidades m o ft confi
 
 Idioma del código: **inglés** (identificadores, comentarios, nombres de archivo, rutas/URLs, tablas, roles, buckets, tests). En castellano solo los textos que ve el usuario. `legacy/` queda como está (es la referencia). Los documentos de `docs/` están escritos en castellano, con nombres de archivo en inglés.
 
+## Estado actual y cómo seguir (actualizado: 17 nov 2026)
+- **Las 7 etapas están hechas** y en `main`, publicadas en Vercel (la URL de producción está en el proyecto de Vercel). Lo que sigue es la **prueba general** del organizador con jueces y pilotos reales, y corregir lo que aparezca.
+- **Antes de una competencia oficial:**
+  - reactivar el proyecto de Supabase (el plan gratis lo pausa tras 7 días sin uso);
+  - descargar la copia completa de cada jornada al terminar (el plan gratis no tiene copias de seguridad diarias);
+  - si se cobra inscripción, pasar a Vercel Pro.
+- **Infraestructura** (la crea y la administra el usuario; nunca pedirle claves ni pegarlas en el chat):
+  - **Supabase:** proyecto en São Paulo, creado desde la integración de Vercel. Las claves están en `.env.local` (no se sube) y en Vercel. El código usa `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
+  - **Mails de login:** SMTP de Gmail con contraseña de aplicación, y plantillas Magic Link y Confirm signup en castellano. Ya anda.
+  - **El organizador** es el usuario con rol `admin`. Los demás entran como `pilot`, y el organizador les cambia el rol o los vincula a su ficha en `/admin/users`.
+  - **Datos de prueba:** la jornada "Entrenamiento AVA (prueba de importador)", importada de la versión vieja y sin publicar.
+- **Cambios en una base que ya existe:**
+  - el esquema declarativo de `supabase/schemas/` es la fuente de verdad: se edita ahí;
+  - se arma un script SQL de un solo uso con `create or replace`, `alter` o `drop policy` y se verifica con PGlite que el esquema anterior más el script dé el esquema nuevo;
+  - se le pasa al usuario: queda en la raíz del proyecto y en el portapapeles (`pbcopy`), y lo aplica él en el SQL Editor de Supabase. Claude no tiene permiso para escribir en la base;
+  - después se borra el script. Nunca se sube.
+- **Probar en el navegador:** con Claude in Chrome. La extensión tiene que estar con la misma cuenta de claude.ai que Claude Code, y el usuario ya tiene que estar logueado en la app.
+  - Para enviar formularios, usar clics por coordenadas o `form.requestSubmit()`: los clics por referencia de la extensión a veces no los envían.
+  - Hacer las pruebas que escriben en jornadas creadas para eso y borrarlas al final. La jornada importada no se toca.
+  - Si `npm run dev` queda con la caché rota (por un `next build` en paralelo), probar con `next build && next start -p 3001`; la sesión sirve igual porque la cookie es de `localhost`.
+- **Commits:** el usuario autorizó commit y push a `main` sin pedir confirmación en cada paso. Confirmar igual antes de escribir datos reales en Supabase o borrar algo que no sea de prueba.
+- **Mapa rápido del código:**
+  - `lib/engine`: el motor, validado; no se toca sin las pruebas de paridad.
+  - `lib/jumps`: carga y recálculo.
+  - `lib/standings`: vistas de la clasificación, orden de salida y carga de resultados.
+  - `lib/events/settings.ts`: ajustes de la jornada.
+  - `lib/import/backup.ts`: importar y exportar la copia completa.
+  - `lib/results/public.ts`: datos de las páginas públicas.
+  - `app/admin/...`: pantallas de jueces y organizador.
+  - `app/account`: el piloto.
+  - `app/results`: el público.
+  - `app/scoring`: "Cómo se puntúa".
+  - `supabase/schemas/01..06`: la base.
+- **Pendientes conocidos, no urgentes:**
+  - la tabla de clasificación está repetida en tres pantallas (admin, acta y pública);
+  - limpiar los archivos que quedan en `originals/incoming/` si una subida no se completa;
+  - el ranking histórico lee todos los saltos en cada visita (pasar a una tabla resumen si crece mucho);
+  - el reproductor 3D carga three.js r128 desde cdnjs.
+
 ## Cómo se trabaja
 - **Siempre simple (ponytail, nivel full):** seguir `.claude/skills/ponytail/SKILL.md` en todo el desarrollo. Es el cambio más chico que resuelve todo, sin abstracciones, opciones ni dependencias que nadie pidió. Nunca se recorta la validación en el servidor, el manejo de errores que evita perder datos, la seguridad ni la accesibilidad.
 - **Pantallas:**
@@ -50,7 +89,7 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
    - la validación contra la Copa del Mundo FAI 2025 (competencia 619 de Skyderby: `GET https://skyderby.ru/api/v1/performance_competitions/619/results` y `/api/v1/tracks/{trackId}/points?freq_1_hz=false&trimmed[seconds_before_start]=40`). Resultado esperado: 333 de 333 saltos idénticos; penalidad de carril igual en 17 de 18. Guardar los datos descargados en un caché local ignorado por git.
    - **Hecho (nov 2026).** Motor en `lib/engine` (TypeScript estricto), tests en `tests/` con Vitest (`npm test`; `npm run test:quick` saltea la Copa). La ruta `/619/results` ya no existe: los IDs salen de `/619/scoreboard` y cada salto de `/619/results/{id}` (resultado sin redondear, punto de referencia, penalidad). Los fixtures están en la rama `main`. Todo se baja a `.cache/` la primera vez (~60 MB). `tests/legacy-parity.test.ts` compara el motor nuevo con `legacy/src/engine.js` salida por salida: cualquier cambio en el motor que cambie un resultado tiene que aparecer ahí y en `docs/decisions.md`.
 2. **Base y autenticación**: esquema en Supabase, RLS por rol, carga de pilotos y jornadas, importador de la "copia completa" JSON.
-   - **Hecho en código (nov 2026), falta crear el proyecto en Supabase.** Diseño, permisos, costos y puesta en marcha: `docs/stage-2-database-and-costs.md`. Esquema declarativo en `supabase/schemas/` (es la fuente de verdad, sistema desde cero; las migraciones las genera la CLI recién cuando haya que cambiar una base en producción); conversión versión vieja ↔ filas en `lib/data/rows.ts`; importador en `lib/import/backup.ts` y `/admin/import`. Reglas: el navegador solo lee (RLS sin políticas de escritura), toda escritura pasa por el servidor con la clave secreta después de `assertRole`; páginas públicas estáticas (sin Realtime, `proxy.ts` solo en `/admin` y `/account`). Pruebas con PGlite en `tests/database.test.ts`. Pantallas de jornadas, pilotos y usuarios/roles en `/admin` (escrituras en `03_admin.sql`: cada cambio y su historial en la misma transacción).
+   - **Hecho (nov 2026), con el proyecto de Supabase creado.** Diseño, permisos, costos y puesta en marcha: `docs/stage-2-database-and-costs.md`. Esquema declarativo en `supabase/schemas/` (es la fuente de verdad, sistema desde cero; las migraciones las genera la CLI recién cuando haya que cambiar una base en producción); conversión versión vieja ↔ filas en `lib/data/rows.ts`; importador en `lib/import/backup.ts` y `/admin/import`. Reglas: el navegador solo lee (RLS sin políticas de escritura), toda escritura pasa por el servidor con la clave secreta después de `assertRole`; páginas públicas estáticas (sin Realtime, `proxy.ts` solo en `/admin` y `/account`). Pruebas con PGlite en `tests/database.test.ts`. Pantallas de jornadas, pilotos y usuarios/roles en `/admin` (escrituras en `03_admin.sql`: cada cambio y su historial en la misma transacción).
    - Tests: correrlos solo cuando se modifica el motor o la base, no en cada cambio.
 3. **Carga de saltos**: subida del original a Storage, SHA-256 en servidor, puntaje en servidor, archivo de reemplazos, historial.
    - **Hecho en código (nov 2026).** `/admin/events/[id]/upload`: vista previa en el navegador con el mismo motor; el navegador comprime el archivo y lo sube a Storage (`originals/incoming/`) con URL firmada; el servidor lo baja, calcula SHA-256, puntúa (oficial), mueve el original a `originals/<evento>/<salto>/<sha256>.gz` y llama a `save_jump` (reemplazo con archivo del anterior, separación 5.6.3, reapertura de tarea validada e historial en una transacción). Recalcular (`apply_scores`) y cambiar ajustes de puntaje con saltos cargados recalcula todo en la misma transacción. Lógica en `lib/jumps/` (port de jumpDoc, checkSeparation y recalcEvent); paridad con la versión vieja en `tests/jumps.test.ts`.
