@@ -22,7 +22,7 @@ export default function Home() {
     <main>
       <h1>Wingsuit Performance</h1>
       <p className="sub">Puntaje FAI ISC Wingsuit Flying 2026 · DZ AVA (Alvear, Rosario). En construcción.</p>
-      <p><Link href="/results">Resultados</Link> · <Link href="/scoring">Cómo se puntúa</Link> · <Link href="/login">Ingresar</Link></p>
+      <p><Link href="/results">Resultados</Link> · <Link href="/scoring">Cómo se puntúa</Link> · <Link href="/help">Ayuda</Link> · <Link href="/login">Ingresar</Link></p>
       <table>
         <thead><tr><th>Regla</th><th>Valor</th><th>Art.</th></tr></thead>
         <tbody>

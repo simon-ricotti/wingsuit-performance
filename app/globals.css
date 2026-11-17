@@ -151,3 +151,7 @@ a, button, select { touch-action: manipulation; }
 .rules li { margin-bottom: 6px; }
 .pen { color: var(--st-void); }
 .stack > button { align-self: flex-start; }
+.help h2 { scroll-margin-top: 16px; margin-top: 32px; }
+.help h3 { margin: 18px 0 6px; font-size: 1rem; }
+.help ol, .help ul { padding-left: 22px; }
+.help code { font-size: .9em; }

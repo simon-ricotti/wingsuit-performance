@@ -75,7 +75,7 @@ export default async function AccountPage() {
           </table>
         </div>
       )}
-      <p className="sub small">Los resultados son provisorios hasta que los jueces revisan los saltos y validan cada tarea.</p>
+      <p className="sub small">Los resultados son provisorios hasta que los jueces revisan los saltos y validan cada tarea. <Link href="/help#piloto">Ayuda</Link>.</p>
       <form action="/auth/logout" method="post"><button type="submit">Salir</button></form>
     </main>
   );

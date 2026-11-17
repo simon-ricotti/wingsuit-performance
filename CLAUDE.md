@@ -38,6 +38,7 @@ Idioma del código: **inglés** (identificadores, comentarios, nombres de archiv
   - `app/account`: el piloto.
   - `app/results`: el público.
   - `app/scoring`: "Cómo se puntúa".
+  - `app/help`: ayuda por rol para jueces, organizadores y pilotos. Actualizarla cuando cambie un flujo o el texto de un botón.
   - `supabase/schemas/01..06`: la base.
 - **Pendientes conocidos, no urgentes:**
   - la tabla de clasificación está repetida en tres pantallas (admin, acta y pública);
