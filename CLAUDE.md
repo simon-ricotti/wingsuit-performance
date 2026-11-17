@@ -57,6 +57,7 @@ No inventar reglas. Todo lo que puntúa sale del reglamento **FAI ISC Competitio
 4. **Pantallas** en React, en este orden: clasificación (con vistas), detalle del salto y revisión del juez (montar `review.js`), replay (montar `replay.js` y `replay3d.js`), acta, exportaciones, orden de salida, ranking histórico, pilotos, "Cómo se puntúa".
    - **Hecho (nov 2026):** clasificación (`/admin/events/[id]`, vistas general, femenina, equipos y por tarea, con la vista en la URL; validación de tareas) y detalle del salto con revisión del juez (`/admin/events/[id]/jumps/[pilot-task-round]`: `review.js` montado tal cual con el motor en `window.WSP`, decisiones, corrección del inicio del carril, firmas, descarga y verificación del original, borrado). Escrituras en `supabase/schemas/05_review.sql`. Lógica de vistas y estado del juzgamiento en `lib/standings/views.ts`.
    - Las firmas ya usan el usuario logueado (adelanta la etapa 5): una por juez, y el nombre sale del perfil.
+   - **Replay hecho (nov 2026):** `/admin/events/[id]/replay?slot=task|round`, `replay.js` y `replay3d.js` montados tal cual (datos en `window.WSApp`, three.js r128 de cdnjs como en la versión vieja). Probado en Chrome.
 5. **Firmas con identidad real**: la firma de revisión usa el usuario logueado con rol juez, no un nombre escrito. Dos firmas = dos usuarios distintos.
 6. **Pilotos**: cada piloto sube sus propios saltos y ve su historial; los jueces revisan.
 7. **Página pública** de resultados por jornada.

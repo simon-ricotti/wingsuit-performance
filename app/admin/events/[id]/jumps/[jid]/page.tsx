@@ -85,6 +85,8 @@ export default async function JumpPage({ params }: { params: Promise<{ id: strin
       <div className="row">{file && <a className="button" href={`/admin/events/${id}/jumps/${jid}/original`} download>Descargar el original</a>}</div>
       {j.fileHash ? <VerifyFile hash={String(j.fileHash)} /> : null}
 
+      <p><Link href={`/admin/events/${id}/replay?slot=${encodeURIComponent(`${task}|${round}`)}`}>Ver el replay de la tanda</Link></p>
+
       <h2>Borrar</h2>
       <DeleteJump event={id} jump={jid} />
     </main>
