@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charla de Wingsuit Performance en AVA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Un solo mundo visual oscuro, pensado para proyectar en el DZ. Layout: una pantalla por tema, barra de navegación abajo. */
+  --bg: #0d1620; --panel: #15222e; --panel-2: #1d2f3e; --ink: #e9f0f4; --muted: #9fb2bf; --line: #2b4254;
+  --accent: #ff7a3d; --lane: #3fc1c9; --warn: #f0b354; --bad: #ff8a80; --good: #5fd08a;
+  --p1: #3fc1c9; --p2: #b39cff; --p3: #ff7a3d; --p4: #ff6fa5;
+  --display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif; --body: "Barlow", "Segoe UI", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 18px/1.5 var(--body); font-variant-numeric: tabular-nums; display: flex; flex-direction: column; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; line-height: 1.05; text-wrap: balance; }
+h1 { font-size: 56px; } h2 { font-size: 40px; } h3 { font-size: 24px; }
+p { margin: 0; max-width: 70ch; }
+.kicker { font-family: var(--display); font-size: 18px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); } .small { font-size: 15px; }
+main { flex: 1; overflow: auto; }
+.slide { display: none; max-width: 1180px; margin: 0 auto; padding: 32px 24px 24px; gap: 20px; flex-direction: column; }
+.slide.on { display: flex; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.two { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+.card .big { font-family: var(--display); font-size: 44px; font-weight: 600; color: var(--accent); line-height: 1; }
+.card.t1 { border-top: 4px solid var(--p1); } .card.t2 { border-top: 4px solid var(--p2); } .card.t3 { border-top: 4px solid var(--p3); }
+ul.pts { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+table { border-collapse: collapse; width: 100%; font-size: 17px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); font-size: 17px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--display); font-size: 24px; font-weight: 600; white-space: nowrap; }
+svg text { font-family: var(--body); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.fig svg { width: 100%; height: auto; max-height: 58vh; display: block; margin: 0 auto; }
+.ctrl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button, input, select { font: inherit; color: inherit; }
+button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #1a0d05; font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.kpi { background: var(--panel-2); border-radius: 6px; padding: 10px 14px; }
+.kpi .k { font-size: 14px; color: var(--muted); } .kpi .v { font-family: var(--display); font-size: 28px; font-weight: 600; }
+.status { min-height: 56px; font-size: 18px; }
+nav.bar { border-top: 1px solid var(--line); background: var(--panel); display: flex; gap: 10px; align-items: center; padding: 10px 16px; flex-wrap: wrap; }
+nav.bar .dots { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+nav.bar .dots button { padding: 4px 10px; font-size: 14px; color: var(--muted); }
+nav.bar .dots button[aria-current="true"] { color: var(--ink); border-color: var(--accent); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 14px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+label.f input, label.f select { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 17px; color: var(--ink); }
+pre.out { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 15px; white-space: pre-wrap; margin: 0; }
+.note { border-left: 4px solid var(--warn); padding: 8px 12px; background: var(--panel); font-size: 15px; max-width: 80ch; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } h1 { font-size: 40px; } h2 { font-size: 30px; } }
+</style>
+</head>
+<body>
+<main id="main">
+
+<section class="slide on" id="inicio" aria-label="Inicio">
+  <span class="kicker">Entrenamiento · Alvear / Aeroparque Rosario (AVA)</span>
+  <h1>Wingsuit Performance: volar como en un campeonato FAI</h1>
+  <p class="muted">Un salto de cada tarea por piloto, puntuado con el reglamento FAI 2026 y con debrief después de cada tarea.</p>
+  <div class="grid">
+    <div class="card t1"><h3>Tiempo</h3><p>Caer lo más lento posible dentro de la ventana.</p><span class="big">s</span></div>
+    <div class="card t2"><h3>Distancia</h3><p>Volar lo más lejos posible en línea recta sobre el suelo.</p><span class="big">m</span></div>
+    <div class="card t3"><h3>Velocidad</h3><p>Volar lo más rápido posible sobre el suelo.</p><span class="big">km/h</span></div>
+  </div>
+  <p class="note">La seguridad va primero: ningún resultado vale un riesgo. Ante la duda, no salgas. Después de los 1500 m la tarea ya terminó.</p>
+  <p class="small muted">Usá las flechas del teclado o la barra de abajo para pasar de tema.</p>
+</section>
+
+<section class="slide" id="salto" aria-label="El salto">
+  <span class="kicker">1 · La disciplina</span>
+  <h2>Todo se mide entre 2500 y 1500 m sobre el suelo</h2>
+  <div class="two">
+    <div class="fig"><svg viewBox="0 0 640 430" role="img" aria-label="Etapas de un salto de Performance">
+      <g stroke="#2b4254" stroke-dasharray="3 4">
+        <line x1="290" x2="630" y1="40" y2="40"/><line x1="290" x2="630" y1="90" y2="90"/><line x1="290" x2="630" y1="140" y2="140"/>
+        <line x1="290" x2="630" y1="190" y2="190"/><line x1="290" x2="630" y1="290" y2="290"/><line x1="290" x2="630" y1="320" y2="320"/><line x1="290" x2="630" y1="380" y2="380"/>
+      </g>
+      <line x1="290" x2="290" y1="40" y2="396" stroke="#9fb2bf" stroke-width="2"/>
+      <path d="M284 392 L290 404 L296 392 Z" fill="#9fb2bf"/>
+      <g fill="#9fb2bf"><circle cx="290" cy="40" r="5"/><circle cx="290" cy="90" r="5"/><circle cx="290" cy="140" r="5"/><circle cx="290" cy="190" r="5"/><circle cx="290" cy="290" r="5"/><circle cx="290" cy="320" r="5"/><circle cx="290" cy="380" r="5"/></g>
+      <g fill="#e9f0f4" font-size="16" text-anchor="end">
+        <text x="274" y="45">Salida: 3200 a 3353 m</text><text x="274" y="95">Llega a 10 m/s de caída</text><text x="274" y="145">+9 s: empieza la validación</text>
+        <text x="274" y="195" font-weight="600">2500 m: entra a la ventana</text><text x="274" y="295" font-weight="600">1500 m: sale de la ventana</text>
+        <text x="274" y="325">1480 m: fin de la validación</text><text x="274" y="385">Apertura: altura del briefing</text>
+      </g>
+      <rect x="342" y="190" width="14" height="100" rx="4" fill="#ff7a3d" fill-opacity=".3" stroke="#ff7a3d" stroke-width="1.5"/>
+      <rect x="462" y="140" width="14" height="180" rx="4" fill="#3fc1c9" fill-opacity=".3" stroke="#3fc1c9" stroke-width="1.5"/>
+      <rect x="572" y="140" width="14" height="240" rx="4" fill="#b39cff" fill-opacity=".3" stroke="#b39cff" stroke-width="1.5"/>
+      <g font-size="15" text-anchor="middle" fill="#e9f0f4" font-weight="600"><text x="349" y="166">Ventana</text><text x="349" y="182">de competencia</text><text x="469" y="116">Validación</text><text x="469" y="132">y carril</text><text x="579" y="116">Separación</text><text x="579" y="132">≥ 150 m</text></g>
+      <g font-size="14" text-anchor="middle" fill="#9fb2bf"><text x="349" y="312">resultado</text><text x="469" y="342">GPS y carril</text><text x="579" y="402">hasta la apertura</text></g>
+    </svg></div>
+    <div class="stack" style="display:flex;flex-direction:column;gap:12px">
+      <ul class="pts">
+        <li><b>Altura sobre el suelo:</b> la del GPS menos la elevación de AVA, 26 m (85 ft).</li>
+        <li><b>Ventana:</b> cuenta el primer cruce de 2500 m y el primer cruce de 1500 m.</li>
+        <li><b>Distancia:</b> recta sobre el suelo entre la entrada y la salida de la ventana. <b>Velocidad:</b> esa distancia sobre ese tiempo.</li>
+        <li><b>Después de 1500 m</b> la tarea terminó: lo que sigue es mantener la separación y abrir.</li>
+      </ul>
+      <div class="card"><h3>Qué es la validación</h3><p>Es el tramo del salto que los jueces revisan para decidir si el resultado vale. No suma puntos.</p><ul class="pts"><li>Empieza 9 s después de que llegás a 10 m/s de caída y termina 20 m debajo de la ventana.</li><li>Se controla que el GPS sea confiable (error menor a 10 m en cada muestra) y que no te salgas de tu carril.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="tareas" aria-label="Las tres tareas">
+  <span class="kicker">2 · Las tres tareas</span>
+  <h2>Mismo traje, misma ventana, tres formas distintas de volarla</h2>
+  <div class="grid">
+    <div class="card t1"><h3>Tiempo</h3><div class="fig"><svg viewBox="0 0 320 170" role="img" aria-label="Perfil del vuelo dentro de la ventana"><line x1="30" x2="305" y1="30" y2="30" stroke="#9fb2bf" stroke-dasharray="4 4"/><line x1="30" x2="305" y1="130" y2="130" stroke="#9fb2bf" stroke-dasharray="4 4"/><text x="305" y="24" text-anchor="end" fill="#9fb2bf" font-size="12">2500 m</text><text x="305" y="146" text-anchor="end" fill="#9fb2bf" font-size="12">1500 m</text><line x1="30" y1="30" x2="252" y2="130" stroke="#3fc1c9" stroke-width="3.5" stroke-linecap="round"/><circle cx="30" cy="30" r="5" fill="#3fc1c9"/><circle cx="252" cy="130" r="5" fill="#3fc1c9"/><text x="150" y="70" fill="#3fc1c9" font-size="20" font-weight="600">84,5 s</text><text x="30" y="164" fill="#e9f0f4" font-size="13">84,5 s · 3699 m · 169 km/h</text></svg></div><p><b>Se mide:</b> los segundos que tardás en bajar de 2500 a 1500 m.</p><p><b>La clave:</b> caer lo más lento posible. Lo que avances no cuenta.</p><p><b>Qué buscar:</b> la velocidad vertical más baja que puedas sostener toda la ventana. El viento no influye.</p></div>
+    <div class="card t2"><h3>Distancia</h3><div class="fig"><svg viewBox="0 0 320 170" role="img" aria-label="Perfil del vuelo dentro de la ventana"><line x1="30" x2="305" y1="30" y2="30" stroke="#9fb2bf" stroke-dasharray="4 4"/><line x1="30" x2="305" y1="130" y2="130" stroke="#9fb2bf" stroke-dasharray="4 4"/><text x="305" y="24" text-anchor="end" fill="#9fb2bf" font-size="12">2500 m</text><text x="305" y="146" text-anchor="end" fill="#9fb2bf" font-size="12">1500 m</text><line x1="30" y1="30" x2="291" y2="130" stroke="#b39cff" stroke-width="3.5" stroke-linecap="round"/><circle cx="30" cy="30" r="5" fill="#b39cff"/><circle cx="291" cy="130" r="5" fill="#b39cff"/><text x="40" y="112" fill="#b39cff" font-size="20" font-weight="600">4345 m</text><text x="30" y="164" fill="#e9f0f4" font-size="13">88,6 s · 4345 m · 185 km/h</text></svg></div><p><b>Se mide:</b> los metros en línea recta sobre el suelo entre la entrada y la salida de la ventana.</p><p><b>La clave:</b> el mejor planeo: avanzar lo máximo por cada metro que bajás.</p><p><b>Qué buscar:</b> planeo alto y rumbo recto; las curvas no suman. El viento de cola ayuda.</p></div>
+    <div class="card t3"><h3>Velocidad</h3><div class="fig"><svg viewBox="0 0 320 170" role="img" aria-label="Perfil del vuelo dentro de la ventana"><line x1="30" x2="305" y1="30" y2="30" stroke="#9fb2bf" stroke-dasharray="4 4"/><line x1="30" x2="305" y1="130" y2="130" stroke="#9fb2bf" stroke-dasharray="4 4"/><text x="305" y="24" text-anchor="end" fill="#9fb2bf" font-size="12">2500 m</text><text x="305" y="146" text-anchor="end" fill="#9fb2bf" font-size="12">1500 m</text><line x1="30" y1="30" x2="145" y2="130" stroke="#ff7a3d" stroke-width="3.5" stroke-linecap="round"/><circle cx="30" cy="30" r="5" fill="#ff7a3d"/><circle cx="145" cy="130" r="5" fill="#ff7a3d"/><text x="120" y="70" fill="#ff7a3d" font-size="20" font-weight="600">276 km/h</text><text x="30" y="164" fill="#e9f0f4" font-size="13">25,6 s · 1922 m · 276 km/h</text></svg></div><p><b>Se mide:</b> esa distancia dividida por el tiempo, en km/h.</p><p><b>La clave:</b> velocidad horizontal sobre el suelo, aunque bajes rápido.</p><p><b>Qué buscar:</b> velocidad y rumbo recto. La ventana pasa en unos 25 s: atención al audible. El viento de cola ayuda.</p></div>
+  </div>
+  <p class="muted small">Los gráficos son saltos reales de campeonatos FAI, a la misma escala: en velocidad se baja el triple de rápido que en tiempo. Entre la salida y los 2500 m tenés unos 700 m para girar a tu punto y entrar estable a la ventana.</p>
+</section>
+
+<section class="slide" id="gps" aria-label="El GPS">
+  <span class="kicker">3 · El GPS</span>
+  <h2>El GPS es el juez: si no graba bien, no hay resultado</h2>
+  <div class="grid">
+    <div class="card"><h3>Antes de subir</h3><ul class="pts"><li>Encendido y grabando.</li><li>FlySight a 5 Hz; Deep and Steep graba a 4 Hz y se marca, pero se puntúa.</li><li>Nada electrónico a menos de 2,54 cm del GPS.</li></ul></div>
+    <div class="card"><h3>En el aire</h3><ul class="pts"><li>Cada muestra de la validación con error menor a 10 m.</li><li>Si falla sin culpa tuya, en un campeonato elegís re-salto o cero. Hoy, re-salto solo si hay tiempo y avión.</li></ul></div>
+    <div class="card"><h3>Al aterrizar</h3><ul class="pts"><li>Entregar o copiar el archivo enseguida.</li><li>Nombre: tarea-ronda-piloto.</li><li>GPS perdido o manipulado: cero.</li></ul></div>
+  </div>
+</section>
+
+<section class="slide" id="pasada" aria-label="La pasada y los puntos">
+  <span class="kicker">4 · La pasada y los puntos</span>
+  <h2>Pasada de costado al viento, salidas a 600 m, cada uno a su punto</h2>
+  <div class="fig"><svg id="anim" viewBox="0 0 680 440" role="img" aria-label="Animación vista desde arriba de la pasada, las salidas y los carriles">
+    <g id="a-bands"></g><g id="a-lanes"></g>
+    <line x1="40" y1="70" x2="640" y2="70" stroke="#9fb2bf" stroke-dasharray="6 5"/>
+    <text x="44" y="56" fill="#9fb2bf" font-size="14">Pasada del avión, de costado al viento</text>
+    <line x1="56" y1="96" x2="56" y2="170" stroke="#6fb3ff" stroke-width="2.5"/><path d="M50 166 L56 178 L62 166 Z" fill="#6fb3ff"/>
+    <text x="66" y="140" fill="#6fb3ff" font-size="14">Viento</text>
+    <rect x="190" y="396" width="280" height="30" rx="6" fill="#1d2f3e" stroke="#2b4254"/><text x="330" y="416" text-anchor="middle" fill="#9fb2bf" font-size="14">Zona de aterrizaje</text>
+    <g id="a-refs"></g><g id="a-trails"></g><g id="a-dots"></g>
+    <polygon id="a-plane" points="0,-7 16,0 0,7 4,0" fill="#e9f0f4"/>
+    <g stroke="#9fb2bf" stroke-width="1.5"><line x1="560" y1="300" x2="620" y2="300"/><line x1="560" y1="295" x2="560" y2="305"/><line x1="620" y1="295" x2="620" y2="305"/></g>
+    <text x="590" y="322" text-anchor="middle" fill="#9fb2bf" font-size="14">600 m</text>
+  </svg></div>
+  <div class="kpis"><div class="kpi"><div class="k">Cronómetro de la puerta</div><div class="v" id="a-timer">–</div></div><div class="kpi"><div class="k">Desvío máximo del piloto 3</div><div class="v" id="a-dev">–</div></div></div>
+  <p class="status" id="a-status"></p>
+  <div class="ctrl"><button class="primary" id="a-play">Pausa</button><button id="a-restart">Reiniciar</button><label class="small muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="a-devchk"> El piloto 3 se sale del carril</label></div>
+</section>
+
+<section class="slide" id="diagonal" aria-label="Segundos en la puerta">
+  <span class="kicker">5 · Por qué importan los segundos en la puerta</span>
+  <h2>Los segundos se cuentan desde la salida real del anterior; salir antes mete tu carril en el del otro</h2>
+  <div class="two">
+    <div class="fig"><svg viewBox="0 0 560 440" role="img" aria-label="El piloto 2 sale antes de tiempo y su carril se superpone con el del piloto 1">
+      <line x1="60" y1="60" x2="520" y2="60" stroke="#9fb2bf" stroke-dasharray="6 5"/><text x="60" y="46" fill="#9fb2bf" font-size="14">Pasada del avión →</text>
+      <polygon points="150,90 210,90 220,380 160,380" fill="#3fc1c9" fill-opacity=".14" stroke="#3fc1c9" stroke-opacity=".7"/>
+      <polygon points="240,90 300,90 340,380 280,380" fill="#ff7a3d" fill-opacity=".14" stroke="#ff7a3d" stroke-opacity=".7"/>
+      <polygon points="210,90 270,90 280,380 220,380" fill="none" stroke="#9fb2bf" stroke-dasharray="4 4"/>
+      <polygon points="180,90 240,90 280,380 220,380" fill="#b39cff" fill-opacity=".22" stroke="#b39cff" stroke-width="1.5"/>
+      <circle cx="180" cy="90" r="5" fill="#3fc1c9"/><circle cx="210" cy="90" r="5" fill="#b39cff"/><circle cx="270" cy="90" r="5" fill="#ff7a3d"/><circle cx="300" cy="90" r="5" fill="none" stroke="#9fb2bf" stroke-width="1.5"/><circle cx="240" cy="90" r="5" fill="none" stroke="#9fb2bf" stroke-width="1.5"/>
+      <g stroke="#e9f0f4" stroke-width="2"><path d="M185 375l10 10M185 385l10 -10M245 375l10 10M245 385l10 -10M305 375l10 10M305 385l10 -10"/></g>
+      <g fill="#9fb2bf" font-size="14" text-anchor="middle"><text x="190" y="406">P1</text><text x="250" y="406">P2</text><text x="310" y="406">P3</text><text x="250" y="424">puntos fijos</text></g>
+      <g fill="#e9f0f4" font-size="14"><text x="350" y="96">El 2 sale a 300 m del 1,</text><text x="350" y="114">la mitad de los segundos</text><text x="8" y="150" font-weight="600">Zona compartida:</text><text x="8" y="168">el 1 y el 2 pueden</text><text x="8" y="186">quedar a menos</text><text x="8" y="204">de 150 m</text></g>
+      <text x="350" y="160" fill="#e9f0f4" font-size="14">El 3 espera sus segundos</text><text x="350" y="178" fill="#e9f0f4" font-size="14">desde el 2: queda a 600 m</text><text x="350" y="220" fill="#9fb2bf" font-size="14">Círculos vacíos: donde</text><text x="350" y="238" fill="#9fb2bf" font-size="14">estaba previsto salir</text>
+    </svg></div>
+    <ul class="pts">
+      <li>El cronómetro de la puerta vuelve a cero con cada salida: siempre esperás los segundos completos desde que salió de verdad el anterior.</li>
+      <li>Si el de adelante se demora, vos también salís más tarde. Todos los carriles quedan apenas inclinados pero separados; solo se alarga la pasada.</li>
+      <li>El peligro es salir antes: tu carril arranca pegado al del anterior, como el 2 en el dibujo. El 3 cuenta desde el 2 y queda bien separado de él, pero nadie puede arreglar la distancia entre el 1 y el 2.</li>
+      <li>Salida fuera de tiempo, sin justificar y con ventaja: −50 % la primera vez, −100 % las siguientes. A menos de 150 m de otro: cero.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="slide" id="penalidades" aria-label="Penalidades">
+  <span class="kicker">6 · Penalidades</span>
+  <h2>Cuenta el punto más alejado del eje, no cuánto tiempo estuviste afuera</h2>
+  <table>
+    <thead><tr><th>Situación</th><th>Distancia al eje del carril</th><th>Penalidad</th></tr></thead>
+    <tbody>
+      <tr><td>Dentro del carril</td><td>Hasta 300 m</td><td class="num">0 %</td></tr>
+      <tr><td>Afuera menos de 150 m</td><td>300 a 450 m</td><td class="num" style="color:var(--warn)">−10 %</td></tr>
+      <tr><td>Afuera entre 150 y 300 m</td><td>450 a 600 m</td><td class="num" style="color:var(--accent)">−20 %</td></tr>
+      <tr><td>Afuera más de 300 m</td><td>Más de 600 m</td><td class="num" style="color:var(--bad)">−50 %, luego cero</td></tr>
+      <tr><td>A menos de 150 m de otro piloto</td><td>Desde la validación hasta la apertura</td><td class="num" style="color:var(--bad)">Cero</td></tr>
+    </tbody>
+  </table>
+  <p class="muted small">El carril se controla desde el inicio de la validación hasta los 1500 m. Por debajo ya no cuenta, pero la separación con los demás sí, hasta abrir.</p>
+</section>
+
+<section class="slide" id="puntaje" aria-label="Puntaje">
+  <span class="kicker">7 · Puntaje</span>
+  <h2>El mejor de cada tarea vale 100 y el resto, su proporción</h2>
+  <div class="grid">
+    <div class="card"><h3>Ejemplo en tiempo</h3><p>Ana vuela 80,0 s y Beto 60,0 s.</p><p class="big">100 · 75</p><p class="muted small">60,0 ÷ 80,0 × 100 = 75</p></div>
+    <div class="card"><h3>Con penalidad</h3><p>Si Beto se salió 100 m del carril, pierde 10 %: 54,0 s.</p><p class="big">67,5</p><p class="muted small">La penalidad se aplica al resultado, antes del porcentaje.</p></div>
+    <div class="card"><h3>Total</h3><p>Se suman las tres tareas. En este entrenamiento hay una ronda, así que el máximo es 300.</p><p class="big">300</p><p class="muted small">En un campeonato se promedian las 3 rondas de cada tarea.</p></div>
+  </div>
+  <h3>Valores de referencia: Mundial FAI 2026 (Lake Elsinore, 36 pilotos)</h3>
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>Nivel</th><th>Tiempo</th><th>Distancia</th><th>Velocidad</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td>Mejor marca del Mundial</td><td class="num" style="color:var(--p1)">112,2 s<br><span class="small muted" style="font-family:var(--body);font-weight:400">récord mundial, Alexey Galda</span></td><td class="num" style="color:var(--p2)">5173 m<br><span class="small muted" style="font-family:var(--body);font-weight:400">Alexey Galda</span></td><td class="num" style="color:var(--p3)">304,9 km/h<br><span class="small muted" style="font-family:var(--body);font-weight:400">Jason Dodunski</span></td><td></td></tr>
+      <tr><td>Campeón del mundo: Luke Rogers (rondas 1 a 3)</td><td>104,4 · 106,0 · 107,5 s</td><td>4500 · 5052 · 4975 m</td><td>292,5 · 284,4 · 301,1 km/h</td><td class="num">292,1</td></tr>
+      <tr><td>Mitad de la tabla (puesto 18)</td><td>86,4 · 88,5 · 77,3 s</td><td>3487 · 3605 · 3536 m</td><td>247,4 · 235,8 · 261,0 km/h</td><td class="num">231,1</td></tr>
+      <tr><td>Anteúltimo (puesto 35)</td><td>56,4 · 55,1 · 55,4 s</td><td>2354 · 2523 · 2690 m</td><td>64,6 · 177,4 · 207,3 km/h</td><td class="num">151,5</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Una competencia nacional: Nacionales de EE. UU. 2025 (Lake Elsinore)</h3>
+  <p>Ganador Alexey Galda: 107 s en tiempo y 4662 m en distancia. Ganador de velocidad Andrew Kenny; Galda segundo con 284,3 km/h. Récords nacionales femeninos: Amelia Dunaway, 3721 m y 279 km/h; Marie Clark, 96,2 s.</p>
+  <p class="muted small">El puntaje es relativo: en nuestro entrenamiento, el mejor de cada tarea se lleva 100 aunque esté lejos de estos números. La velocidad y la distancia cambian mucho con el viento del día y del lugar; el tiempo es la tarea que mejor se compara entre eventos.</p>
+</section>
+
+<section class="slide" id="seguridad" aria-label="Seguridad">
+  <span class="kicker">8 · Seguridad</span>
+  <h2>La seguridad manda: separación, apertura y un plan B para aterrizar</h2>
+  <div class="grid">
+    <div class="card"><h3>En la puerta</h3><ul class="pts"><li>Esperá los segundos completos desde la salida del anterior. Ante la duda, más; nunca menos.</li><li>La decisión de salir es tuya. Si no estás seguro, no salgas y avisás al aterrizar.</li><li>Repasá en tierra el orden de salida y tu punto: arriba van apretados.</li></ul></div>
+    <div class="card"><h3>En el vuelo</h3><ul class="pts"><li>Girá enseguida a tu punto y mantené tu carril hasta abrir.</li><li>Mirá a los costados: a menos de 150 m de otro es cero y es peligroso.</li><li>Audible obligatorio.</li><li>A los 1500 m la tarea terminó: dejá de buscar rendimiento.</li></ul></div>
+    <div class="card"><h3>Apertura y aterrizaje</h3><ul class="pts"><li>Abrí a la altura fijada en el briefing, nunca por debajo de 600 m.</li><li>Conocé las zonas alternativas del mapa del día.</li><li>Evitá la zona urbana de Alvear, las rutas y el río.</li></ul></div>
+  </div>
+  <p class="note">Si cambian el viento, las nubes o el tránsito, la tarea se suspende. Lo decide el Meet Director, y cualquiera puede pedirlo.</p>
+</section>
+
+<section class="slide" id="planificador" aria-label="Planificador de la pasada">
+  <span class="kicker">9 · Planificador de la pasada en AVA</span>
+  <h2>Del viento de altura a la pasada, los segundos y los puntos</h2>
+  <div class="two">
+    <div class="fig"><svg id="map" viewBox="0 0 600 600" role="img" aria-label="Mapa esquemático de AVA con la pasada, los carriles y los puntos de referencia"></svg></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form">
+        <label class="f">Viento de altura: viene del (°)<input id="w-dir" type="number" step="5" value="45"></label>
+        <label class="f">Velocidad del viento (nudos)<input id="w-spd" type="number" step="1" value="20"></label>
+        <label class="f">Wingsuits por pasada<input id="n" type="number" min="1" max="8" step="1" value="5"></label>
+        <label class="f">Pasada a barlovento de AVA (km)<input id="dist" type="number" step="0.5" value="4"></label>
+        <label class="f">Línea de puntos a barlovento de AVA (km)<input id="refoff" type="number" step="0.25" value="0.5"></label>
+        <label class="f">Velocidad indicada en la pasada (nudos)<input id="ias" type="number" step="5" value="80"></label>
+        <label class="f">Altura de salida (m sobre el suelo)<input id="alt" type="number" step="50" value="3300"></label>
+        <label class="f">Sentido de la pasada<select id="sense"><option value="1">Viento por la izquierda del avión</option><option value="-1">Viento por la derecha del avión</option></select></label>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">Rumbo sobre el suelo de la pasada</div><div class="v" id="o-track">–</div></div>
+        <div class="kpi"><div class="k">Segundos entre salidas</div><div class="v" id="o-sec">–</div></div>
+        <div class="kpi"><div class="k">Velocidad sobre el suelo</div><div class="v" id="o-gs">–</div></div>
+        <div class="kpi"><div class="k">Corrección por viento</div><div class="v" id="o-crab">–</div></div>
+      </div>
+      <p class="small muted">Puntos para pegar en la jornada de la plataforma (nombre, latitud, longitud):</p>
+      <pre class="out" id="o-refs"></pre>
+      <div class="ctrl"><button id="copy">Copiar puntos</button><span class="small muted" id="copied" role="status"></span></div>
+      <p class="small muted" id="o-exits"></p>
+      <h3>Para el piloto del avión</h3>
+      <pre class="out" id="o-pilot"></pre>
+      <div class="ctrl"><button id="copy2">Copiar hoja del piloto</button><span class="small muted" id="copied2" role="status"></span></div>
+    </div>
+  </div>
+  <p class="note">Esquema, no mapa: el norte va arriba, los anillos marcan 2, 4 y 6 km desde AVA y la pista se dibuja norte-sur y Alvear está a 2,5 km al oeste-suroeste. Las cuentas son aproximadas (velocidad verdadera estimada a partir de la indicada según la altura) y el rumbo es verdadero; verificalos con el piloto del avión antes de cada carga, y con el DZ revisá que la zona de apertura no interfiera con el circuito de tránsito, que va al oeste de la pista.</p>
+</section>
+
+<section class="slide" id="debrief" aria-label="Resultados y debrief">
+  <span class="kicker">10 · Resultados y debrief</span>
+  <h2>Después de cada tarea: replay, resultados y una cosa para mejorar</h2>
+  <div class="grid">
+    <div class="card"><h3>Carga de archivos</h3><p>El equipo de datos sube cada archivo con su tarea, ronda y punto asignado. La plataforma calcula resultado, avisos y penalidades.</p></div>
+    <div class="card"><h3>Replay</h3><p>La tanda en 3D y desde arriba, sincronizada en la entrada a la ventana, con la tabla en vivo.</p></div>
+    <div class="card"><h3>Debrief de 15 minutos</h3><p>Salida y giro, carril y separación, y una cosa para cambiar en la próxima tarea, por piloto.</p></div>
+  </div>
+  <p><a href="https://claude.ai/artifact/7wBWLfroc8VepSHQeE8eff">Abrir la plataforma de puntaje</a></p>
+</section>
+
+</main>
+<nav class="bar" aria-label="Temas">
+  <button id="prev" aria-label="Tema anterior">←</button>
+  <div class="dots" id="dots"></div>
+  <button id="full">Pantalla completa</button>
+  <button id="next" aria-label="Tema siguiente">→</button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var names = ['Inicio', 'El salto', 'Las tareas', 'GPS', 'Pasada', 'Segundos en la puerta', 'Penalidades', 'Puntaje', 'Seguridad', 'Planificador', 'Debrief'];
+  var dots = document.getElementById('dots'), cur = 0;
+  slides.forEach(function (s, i) {
+    var b = document.createElement('button'); b.textContent = names[i] || String(i + 1);
+    b.addEventListener('click', function () { go(i); }); dots.appendChild(b);
+  });
+  function go(i, fromHash) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, k) { s.classList.toggle('on', k === cur); });
+    Array.prototype.forEach.call(dots.children, function (b, k) { b.setAttribute('aria-current', String(k === cur)); });
+    document.getElementById('main').scrollTop = 0;
+    var id = slides[cur].id;
+    if (!fromHash && location.hash !== '#' + id) { try { history.replaceState(null, '', '#' + id); } catch (e) { location.hash = id; } }
+    if (id === 'pasada') Anim.restart(); else Anim.pause();
+    if (id === 'planificador') Plan.update();
+  }
+  function fromHash() { var h = location.hash.replace('#', ''); var i = slides.findIndex(function (s) { return s.id === h; }); go(i < 0 ? 0 : i, true); }
+  window.addEventListener('hashchange', fromHash);
+  document.getElementById('prev').addEventListener('click', function () { go(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { go(cur + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') go(cur + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(cur - 1);
+  });
+  document.getElementById('full').addEventListener('click', function () {
+    try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function () {}); } catch (e) {}
+  });
+
+  // ---------- animación de la pasada ----------
+  var Anim = (function () {
+    var NS = 'http://www.w3.org/2000/svg', COL = ['#3fc1c9', '#b39cff', '#ff7a3d', '#ff6fa5'];
+    var XE = [220, 280, 340, 400], TE = [0, 15, 30, 45], Y0 = 70, TV = 10, TF = 70, T0 = -25, T1 = TE[3] + TV + TF + 6;
+    var $ = function (id) { return document.getElementById(id); };
+    function mk(tag, a, p) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; }
+    var P = XE.map(function (xe, i) { return { i: i, te: TE[i], E: [xe, Y0], C: [xe + 34, Y0 + 4], V: [xe + 20, 104], R: [xe + 10, 378] }; });
+    P.forEach(function (p) {
+      var g = $('a-refs');
+      mk('path', { d: 'M' + (p.R[0] - 5) + ' ' + (p.R[1] - 5) + 'l10 10M' + (p.R[0] - 5) + ' ' + (p.R[1] + 5) + 'l10 -10', stroke: '#e9f0f4', 'stroke-width': 1.5 }, g);
+      mk('text', { x: p.R[0] + 8, y: p.R[1] + 5, fill: '#9fb2bf', 'font-size': 13 }, g).textContent = 'P' + (p.i + 1);
+      p.poly = mk('polyline', { fill: 'none', stroke: COL[p.i], 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, $('a-trails'));
+      p.dot = mk('circle', { r: 6, fill: COL[p.i], opacity: 0 }, $('a-dots'));
+      p.lab = mk('text', { fill: '#e9f0f4', 'font-size': 13, 'font-weight': 600, opacity: 0 }, $('a-dots')); p.lab.textContent = String(p.i + 1);
+      var dx = p.R[0] - p.V[0], dy = p.R[1] - p.V[1], L = Math.hypot(dx, dy); p.n = [-dy / L, dx / L];
+      var q = function (w) { return [[p.V[0] + p.n[0] * w, p.V[1] + p.n[1] * w], [p.R[0] + p.n[0] * w, p.R[1] + p.n[1] * w], [p.R[0] - p.n[0] * w, p.R[1] - p.n[1] * w], [p.V[0] - p.n[0] * w, p.V[1] - p.n[1] * w]].map(function (a) { return a.join(','); }).join(' '); };
+      p.lane = mk('polygon', { points: q(30), fill: COL[p.i], 'fill-opacity': 0.12, stroke: COL[p.i], 'stroke-opacity': 0.6, opacity: 0 }, $('a-lanes'));
+      p.axis = mk('line', { x1: p.V[0], y1: p.V[1], x2: p.R[0], y2: p.R[1], stroke: COL[p.i], 'stroke-dasharray': '3 4', opacity: 0 }, $('a-lanes'));
+      if (p.i === 2) {
+        p.bands = [];
+        [[30, 45, '#f0b354'], [45, 60, '#ff7a3d'], [60, 72, '#ff8a80']].forEach(function (b) {
+          [1, -1].forEach(function (s) {
+            var pts = [[p.V, b[0]], [p.V, b[1]], [p.R, b[1]], [p.R, b[0]]].map(function (z) { return [z[0][0] + p.n[0] * z[1] * s, z[0][1] + p.n[1] * z[1] * s].join(','); }).join(' ');
+            p.bands.push(mk('polygon', { points: pts, fill: b[2], 'fill-opacity': 0.2, opacity: 0 }, $('a-bands')));
+          });
+        });
+      }
+    });
+    var t = T0, playing = false, last = null, maxDev = 0, raf = 0;
+    function bez(a, b, c, s) { return [(1 - s) * (1 - s) * a[0] + 2 * (1 - s) * s * b[0] + s * s * c[0], (1 - s) * (1 - s) * a[1] + 2 * (1 - s) * s * b[1] + s * s * c[1]]; }
+    function pos(p, tt) {
+      var tau = tt - p.te; if (tau < 0) return null; if (tau <= TV) return bez(p.E, p.C, p.V, tau / TV);
+      var s = Math.min(1, (tau - TV) / TF), x = p.V[0] + (p.R[0] - p.V[0]) * s, y = p.V[1] + (p.R[1] - p.V[1]) * s;
+      if (p.i === 2 && $('a-devchk').checked) { var o = 40 * Math.sin(Math.PI * s); x += p.n[0] * o; y += p.n[1] * o; }
+      return [x, y];
+    }
+    function draw() {
+      var px = 220 + 4 * t, pl = $('a-plane');
+      pl.setAttribute('transform', 'translate(' + Math.min(Math.max(px, 30), 650) + ',' + Y0 + ')'); pl.setAttribute('opacity', px > 650 ? 0 : 1);
+      var lastExit = null; P.forEach(function (p) { if (t >= p.te) lastExit = p; });
+      $('a-timer').textContent = (lastExit && t - lastExit.te < 20 && t <= TE[3] + 16) ? Math.floor(t - lastExit.te) + ' s' : (t < 0 ? 'esperando la 1.ª salida' : '–');
+      var devOn = $('a-devchk').checked;
+      P.forEach(function (p) {
+        var q = pos(p, t);
+        if (!q) { p.dot.setAttribute('opacity', 0); p.lab.setAttribute('opacity', 0); p.poly.setAttribute('points', ''); p.lane.setAttribute('opacity', 0); p.axis.setAttribute('opacity', 0); if (p.bands) p.bands.forEach(function (b) { b.setAttribute('opacity', 0); }); return; }
+        var pts = []; for (var k = p.te; k <= t; k += 0.5) { var z = pos(p, k); if (z) pts.push(z[0].toFixed(1) + ',' + z[1].toFixed(1)); }
+        pts.push(q[0].toFixed(1) + ',' + q[1].toFixed(1)); p.poly.setAttribute('points', pts.join(' '));
+        p.dot.setAttribute('cx', q[0]); p.dot.setAttribute('cy', q[1]); p.dot.setAttribute('opacity', 1);
+        p.lab.setAttribute('x', q[0] + 9); p.lab.setAttribute('y', q[1] - 7); p.lab.setAttribute('opacity', 1);
+        var on = (t - p.te) >= TV ? 1 : 0; p.lane.setAttribute('opacity', on); p.axis.setAttribute('opacity', on);
+        if (p.bands) {
+          p.bands.forEach(function (b) { b.setAttribute('opacity', on && devOn ? 1 : 0); });
+          if (on) { var r = [q[0] - p.V[0], q[1] - p.V[1]], lat = Math.abs(r[0] * p.n[0] + r[1] * p.n[1]) * 10; if (lat > maxDev) maxDev = lat; }
+        }
+      });
+      var out = Math.max(0, maxDev - 300), pen = out > 300 ? '−50 %' : out >= 150 ? '−20 %' : out > 0 ? '−10 %' : 'sin penalidad';
+      $('a-dev').textContent = (t < P[2].te + TV) ? '–' : Math.round(maxDev) + ' m · ' + pen;
+      var s;
+      if (t < 0) s = 'El avión vuela de costado al viento, del lado de donde viene el viento respecto de la zona de aterrizaje. Cada piloto ya sabe cuál es su punto.';
+      else if (t < TE[3] + 2) s = 'Sale el piloto ' + (lastExit.i + 1) + '. El cronómetro vuelve a cero: el siguiente espera los segundos anunciados para quedar a 600 m.';
+      else if (t < TE[3] + TV + 2) s = 'Cada uno gira enseguida hacia su punto. 9 s después de llegar a 10 m/s de caída queda fijo el inicio de su carril de 600 m.';
+      else if (t < T1 - 4) s = devOn ? 'El piloto 3 se aleja más de 300 m del eje: sale de su carril, se mete en el del 4 y se penaliza según cuánto se salió.' : 'Carriles paralelos, uno al lado del otro: nadie se cruza y todos quedan a más de 150 m del resto.';
+      else s = 'Llegan a sus puntos y abren. En la tarea siguiente se rotan el orden de salida y los puntos.';
+      $('a-status').textContent = s;
+      $('a-play').textContent = playing ? 'Pausa' : 'Reproducir';
+    }
+    function frame(ts) { if (!playing) return; if (last !== null) t += Math.min(0.1, (ts - last) / 1000) * 8; last = ts; if (t >= T1) { t = T1; playing = false; } draw(); if (playing) raf = requestAnimationFrame(frame); }
+    function play() { if (t >= T1) { t = T0; maxDev = 0; } playing = true; last = null; cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); draw(); }
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('a-play').addEventListener('click', function () { if (playing) { playing = false; draw(); } else play(); });
+    $('a-restart').addEventListener('click', function () { t = T0; maxDev = 0; play(); });
+    $('a-devchk').addEventListener('change', function () { t = T0; maxDev = 0; play(); });
+    draw();
+    return { restart: function () { t = T0; maxDev = 0; if (reduce) { playing = false; draw(); } else play(); }, pause: function () { playing = false; cancelAnimationFrame(raf); } };
+  })();
+
+  // ---------- planificador ----------
+  var Plan = (function () {
+    var LAT0 = -33.04639, LON0 = -60.59694, KX = 111320 * Math.cos(LAT0 * Math.PI / 180), KY = 110950;
+    var $ = function (id) { return document.getElementById(id); };
+    var NS = 'http://www.w3.org/2000/svg', svg = $('map'), S = 42, CX = 300, CY = 300;
+    function num(id, d) { var v = parseFloat(String($(id).value).replace(',', '.')); return isFinite(v) ? v : d; }
+    function mk(tag, a, txt) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; }
+    function px(e, n) { return [CX + e / 1000 * S, CY - n / 1000 * S]; }
+    function ll(e, n) { return [LAT0 + n / KY, LON0 + e / KX]; }
+    function fmt(x, d) { return x.toFixed(d).replace('.', ','); }
+    var COL = ['#3fc1c9', '#b39cff', '#ff7a3d', '#ff6fa5', '#6fb3ff', '#5fd08a', '#f0b354', '#ff8a80'];
+    function update() {
+      var dir = ((num('w-dir', 45) % 360) + 360) % 360, ws = Math.max(0, num('w-spd', 20)), n = Math.max(1, Math.min(8, Math.round(num('n', 5))));
+      var D = num('dist', 4) * 1000, R0 = num('refoff', 0.5) * 1000, ias = Math.max(40, num('ias', 80)), alt = num('alt', 3300), sense = +$('sense').value;
+      var th = dir * Math.PI / 180, u = [Math.sin(th), Math.cos(th)], r = [Math.cos(th) * sense, -Math.sin(th) * sense];
+      var tas = ias * (1 + 0.02 * (alt / 0.3048) / 1000), gs = ws < tas ? Math.sqrt(tas * tas - ws * ws) : 0, gsms = gs * 0.514444;
+      var sec = gsms > 0 ? 600 / gsms : NaN, crab = ws < tas ? Math.asin(ws / tas) * 180 / Math.PI : NaN;
+      var track = (Math.atan2(r[0], r[1]) * 180 / Math.PI + 360) % 360;
+      $('o-track').textContent = Math.round(track) + '°';
+      $('o-sec').textContent = isFinite(sec) ? Math.round(sec) + ' s' : '–';
+      $('o-gs').textContent = Math.round(gs) + ' kt';
+      $('o-crab').textContent = isFinite(crab) ? Math.round(crab) + '° hacia el viento' : '–';
+      var exits = [], refs = [];
+      for (var k = 0; k < n; k++) {
+        var s = (k - (n - 1) / 2) * 600;
+        exits.push([u[0] * D + r[0] * s, u[1] * D + r[1] * s]);
+        refs.push([u[0] * R0 + r[0] * s, u[1] * R0 + r[1] * s]);
+      }
+      $('o-refs').textContent = refs.map(function (p, k) { var g = ll(p[0], p[1]); return 'P' + (k + 1) + ', ' + g[0].toFixed(5) + ', ' + g[1].toFixed(5); }).join('\n');
+      var e1 = ll(exits[0][0], exits[0][1]), eN = ll(exits[n - 1][0], exits[n - 1][1]);
+      $('o-exits').textContent = 'Primera salida en ' + e1[0].toFixed(5) + ', ' + e1[1].toFixed(5) + '; última en ' + eN[0].toFixed(5) + ', ' + eN[1].toFixed(5) + '. Cada piloto vuela unos ' + fmt((D - R0) / 1000, 1) + ' km hasta su punto.';
+      var crabv = isFinite(crab) ? crab : 0, hdg = ((track - sense * crabv) % 360 + 360) % 360;
+      var before = (n - 1) / 2 * 600, runIn = 1500, tBefore = gsms > 0 ? before / gsms : NaN, tExits = isFinite(sec) ? (n - 1) * sec : NaN, tRun = gsms > 0 ? runIn / gsms : NaN;
+      function dm(v, pos, neg) { var a = Math.abs(v), d = Math.floor(a), m = (a - d) * 60; return d + '°' + (m < 10 ? '0' : '') + m.toFixed(2) + "' " + (v >= 0 ? pos : neg); }
+      function pt(g) { return dm(g[0], 'N', 'S') + ', ' + dm(g[1], 'E', 'O') + '  (' + g[0].toFixed(5) + ', ' + g[1].toFixed(5) + ')'; }
+      function radial(e) { var b = (Math.atan2(e[0], e[1]) * 180 / Math.PI + 360) % 360, d = Math.hypot(e[0], e[1]); return Math.round(b) + '° desde AVA, a ' + fmt(d / 1000, 1) + ' km (' + fmt(d / 1852, 1) + ' NM)'; }
+      var st = [exits[0][0] - r[0] * runIn, exits[0][1] - r[1] * runIn], side = sense === 1 ? 'derecha' : 'izquierda';
+      var lines = [
+        'Altura de lanzamiento: ' + Math.round(alt) + ' m sobre el suelo = ' + (Math.round((alt + 26) / 0.3048 / 100) * 100) + ' ft de altitud (AVA a 85 ft)',
+        'Viento usado: del ' + Math.round(dir) + '° a ' + Math.round(ws) + ' kt',
+        'Pasada: rumbo sobre el suelo ' + Math.round(track) + '°, proa ' + Math.round(hdg) + '° (corrección de ' + Math.round(crabv) + '° hacia el viento)',
+        'Velocidad: ' + Math.round(ias) + ' kt indicados, unos ' + Math.round(gs) + ' kt sobre el suelo',
+        'Línea de pasada: paralela, a ' + fmt(D / 1000, 1) + ' km (' + fmt(D / 1852, 1) + ' NM) de AVA; AVA queda a la ' + side,
+        'Inicio de pasada (1,5 km antes de la 1.ª salida): ' + radial(st),
+        '   ' + pt(ll(st[0], st[1])),
+        '1.ª salida: ' + radial(exits[0]) + (isFinite(tBefore) ? ', ' + Math.round(tBefore) + ' s antes de tener AVA al través' : ''),
+        '   ' + pt(e1),
+        'Última salida (' + n + '.ª): ' + radial(exits[n - 1]),
+        '   ' + pt(eN),
+        'Salidas: ' + n + ', una cada ' + (isFinite(sec) ? Math.round(sec) : '–') + ' s; de la primera a la última, ' + (isFinite(tExits) ? Math.round(tExits) : '–') + ' s y ' + fmt((n - 1) * 0.6, 1) + ' km',
+        'Duración total a rumbo fijo, desde el inicio de pasada: ' + (isFinite(tRun + tExits) ? Math.round(tRun + tExits) : '–') + ' s (' + fmt((runIn + (n - 1) * 600) / 1000, 1) + ' km)',
+        'Mantener rumbo y velocidad hasta que salga el último. Rumbos verdaderos.'
+      ];
+      $('o-pilot').textContent = lines.join('\n');
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      [2, 4, 6].forEach(function (km) { mk('circle', { cx: CX, cy: CY, r: km * S, fill: 'none', stroke: '#2b4254', 'stroke-dasharray': '4 5' }); mk('text', { x: CX + 4, y: CY - km * S - 4, fill: '#9fb2bf', 'font-size': 12 }, km + ' km'); });
+      mk('path', { d: 'M560 50 L552 70 L560 64 L568 70 Z', fill: '#e9f0f4' }); mk('text', { x: 560, y: 40, fill: '#e9f0f4', 'font-size': 14, 'text-anchor': 'middle' }, 'N');
+      var aw = px(-2500 * Math.cos(Math.PI / 8), -2500 * Math.sin(Math.PI / 8) * 1 - 0), alv = px(-2500 * Math.sin(67.5 * Math.PI / 180), -2500 * Math.cos(67.5 * Math.PI / 180));
+      mk('rect', { x: alv[0] - 14, y: alv[1] - 10, width: 28, height: 20, rx: 4, fill: '#1d2f3e', stroke: '#2b4254' }); mk('text', { x: alv[0], y: alv[1] + 26, fill: '#9fb2bf', 'font-size': 12, 'text-anchor': 'middle' }, 'Alvear');
+      // carriles
+      exits.forEach(function (e, k) {
+        var a = px(e[0], e[1]), b = px(refs[k][0], refs[k][1]), dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, w = 0.3 * S, nx = -dy / L * w, ny = dx / L * w;
+        mk('polygon', { points: [[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]].map(function (z) { return z.join(','); }).join(' '), fill: COL[k], 'fill-opacity': 0.14, stroke: COL[k], 'stroke-opacity': 0.6 });
+        mk('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: COL[k], 'stroke-dasharray': '3 4' });
+      });
+      // pasada
+      var half = (n - 1) / 2 * 600 + 1500, j0 = px(u[0] * D - r[0] * half, u[1] * D - r[1] * half), j1 = px(u[0] * D + r[0] * half, u[1] * D + r[1] * half);
+      mk('line', { x1: j0[0], y1: j0[1], x2: j1[0], y2: j1[1], stroke: '#e9f0f4', 'stroke-width': 1.5, 'stroke-dasharray': '7 5' });
+      var ang = Math.atan2(j1[1] - j0[1], j1[0] - j0[0]);
+      mk('path', { d: 'M' + j1[0] + ' ' + j1[1] + ' l' + (-12 * Math.cos(ang - 0.4)) + ' ' + (-12 * Math.sin(ang - 0.4)) + ' M' + j1[0] + ' ' + j1[1] + ' l' + (-12 * Math.cos(ang + 0.4)) + ' ' + (-12 * Math.sin(ang + 0.4)), stroke: '#e9f0f4', 'stroke-width': 1.5, fill: 'none' });
+      exits.forEach(function (e, k) { var a = px(e[0], e[1]); mk('circle', { cx: a[0], cy: a[1], r: 6, fill: COL[k] }); mk('text', { x: a[0], y: a[1] + 4, fill: '#0d1620', 'font-size': 10, 'font-weight': 700, 'text-anchor': 'middle' }, String(k + 1)); });
+      refs.forEach(function (p, k) { var a = px(p[0], p[1]); mk('path', { d: 'M' + (a[0] - 5) + ' ' + (a[1] - 5) + 'l10 10M' + (a[0] - 5) + ' ' + (a[1] + 5) + 'l10 -10', stroke: '#e9f0f4', 'stroke-width': 1.8 }); });
+      // AVA
+      var p1 = px(0, -385), p2 = px(0, 385);
+      mk('line', { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: '#9fb2bf', 'stroke-width': 4 });
+      mk('circle', { cx: CX, cy: CY, r: 9, fill: 'none', stroke: '#ff7a3d', 'stroke-width': 2 });
+      mk('text', { x: CX + 14, y: CY + 18, fill: '#ff7a3d', 'font-size': 14, 'font-weight': 600 }, 'AVA');
+      // viento
+      var wc = [70, 70], wl = 34, wt = [wc[0] - u[0] * wl, wc[1] + u[1] * wl], wf = [wc[0] + u[0] * wl, wc[1] - u[1] * wl];
+      mk('line', { x1: wf[0], y1: wf[1], x2: wt[0], y2: wt[1], stroke: '#6fb3ff', 'stroke-width': 3 });
+      var wa = Math.atan2(wt[1] - wf[1], wt[0] - wf[0]);
+      mk('path', { d: 'M' + wt[0] + ' ' + wt[1] + ' l' + (-12 * Math.cos(wa - 0.45)) + ' ' + (-12 * Math.sin(wa - 0.45)) + ' l' + (12 * Math.cos(wa - 0.45) - 12 * Math.cos(wa + 0.45)) + ' ' + (12 * Math.sin(wa - 0.45) - 12 * Math.sin(wa + 0.45)) + ' Z', fill: '#6fb3ff' });
+      mk('text', { x: 70, y: 128, fill: '#6fb3ff', 'font-size': 13, 'text-anchor': 'middle' }, 'Viento ' + Math.round(dir) + '° · ' + Math.round(ws) + ' kt');
+      var lab = px(u[0] * D + r[0] * (half - 300), u[1] * D + r[1] * (half - 300));
+      mk('text', { x: Math.min(560, Math.max(40, lab[0])), y: Math.min(580, Math.max(20, lab[1] - 12)), fill: '#e9f0f4', 'font-size': 13, 'text-anchor': 'middle' }, 'Pasada');
+    }
+    ['w-dir', 'w-spd', 'n', 'dist', 'refoff', 'ias', 'alt', 'sense'].forEach(function (id) { $(id).addEventListener('input', update); $(id).addEventListener('change', update); });
+    $('copy').addEventListener('click', function () {
+      var txt = $('o-refs').textContent;
+      try { navigator.clipboard.writeText(txt).then(function () { $('copied').textContent = 'Copiados'; }, function () { $('copied').textContent = 'No pude copiar: seleccioná el texto y copialo a mano.'; }); }
+      catch (e) { $('copied').textContent = 'No pude copiar: seleccioná el texto y copialo a mano.'; }
+    });
+    $('copy2').addEventListener('click', function () {
+      var txt = $('o-pilot').textContent;
+      try { navigator.clipboard.writeText(txt).then(function () { $('copied2').textContent = 'Copiada'; }, function () { $('copied2').textContent = 'No pude copiar: seleccioná el texto y copialo a mano.'; }); }
+      catch (e) { $('copied2').textContent = 'No pude copiar: seleccioná el texto y copialo a mano.'; }
+    });
+    update();
+    return { update: update };
+  })();
+
+  fromHash();
+})();
+</script>
+</body>
+</html>
