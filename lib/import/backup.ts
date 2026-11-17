@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { PackedTrack } from '../engine';
 import {
-  eventToRow, jumpKeyString, jumpToRow, pilotToRow, reviewsToRows,
+  eventToRow, jumpKeyString, jumpToRow, pilotToRow, reviewsToRows, rowToEvent, rowToJump, rowToPilot,
   type EventRow, type JumpRow, type LegacyEvent, type LegacyJump, type LegacyPilot, type PilotRow, type ReviewRow,
 } from '../data/rows';
 
@@ -134,5 +134,31 @@ export function prepareImport(backup: LegacyBackup, opts: { now?: string; fileNa
     },
     uploads,
     warnings,
+  };
+}
+
+// ---------- export: rows → full backup (the inverse of prepareImport) ----------
+export interface BackupSource {
+  event: EventRow; pilots: PilotRow[]; jumps: JumpRow[]; reviews: ReviewRow[];
+  tracks: { pilot_id: string; task: string; round: number; packed: PackedTrack }[];
+  /** Original files by jump key, gzip bytes as stored. */
+  originals: Record<string, { name: string; size: number; sha256: string; gz: Uint8Array; at: string }>;
+  log: { at: string; who: string; actor: string | null; text: string; jump_key: string | null; data: Record<string, unknown> | null }[];
+  exportedBy: string | null;
+}
+
+/** Full backup in the previous platform's format, so it can be imported again (here or there). */
+export function buildBackup(src: BackupSource, now = new Date().toISOString()): LegacyBackup {
+  const used = new Set(src.jumps.map((j) => j.pilot_id));
+  return {
+    format: BACKUP_FORMAT, version: 1, exportedAt: now, exportedBy: src.exportedBy,
+    event: rowToEvent(src.event),
+    pilots: src.pilots.filter((p) => used.has(p.id)).map(rowToPilot),
+    jumps: src.jumps.map((r) => ({ ...rowToJump(r, src.reviews), id: jumpKeyString(r) })),
+    tracks: Object.fromEntries(src.tracks.map((t) => [jumpKeyString(t), t.packed])),
+    originals: Object.fromEntries(Object.entries(src.originals).map(([k, o]) => [k, {
+      name: o.name, size: o.size, sha256: o.sha256, enc: 'gzip' as const, data: Buffer.from(o.gz).toString('base64'), at: Date.parse(o.at),
+    }])),
+    log: src.log.map((l) => ({ at: Date.parse(l.at), who: l.who, uid: (l.data?.legacyUid as string | undefined) ?? l.actor, text: l.text, jid: l.jump_key })),
   };
 }

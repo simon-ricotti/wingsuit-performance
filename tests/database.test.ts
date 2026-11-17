@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import * as W from '../lib/engine';
 import { rowToEvent, rowToJump, rowToPilot, type EventRow, type JumpRow, type PilotRow, type ReviewRow } from '../lib/data/rows';
-import { parseBackup, prepareImport, BackupError, type LegacyBackup, type PreparedImport } from '../lib/import/backup';
+import { buildBackup, parseBackup, prepareImport, BackupError, type LegacyBackup, type PreparedImport } from '../lib/import/backup';
 import { createTestDb, createUser, type TestDb } from './support/db';
 import { parseEventSettings } from '../lib/events/settings';
 import { buildLegacyBackup } from './support/legacy-backup';
@@ -475,4 +475,36 @@ test('editing only the judge notes keeps the task validated; a decision reopens 
   expect(await validated()).toHaveProperty('time|3');
   await db.as(SERVICE, `select public.update_jump($1, $2, $3, $4, '{"pen_manual": 10}'::jsonb, false, 'x', null, 'x')`, K);
   expect(await validated()).not.toHaveProperty('time|3');
+});
+
+test('export: a full backup built from the imported rows matches the original backup', async () => {
+  // Fresh database with only the import, so later tests' changes do not interfere.
+  const fresh = await createTestDb();
+  const who = await createUser(fresh, 'admin');
+  await fresh.as(SERVICE, `select public.import_backup($1::jsonb, $2::uuid, 'Admin')`, [JSON.stringify(prepared.payload), who]);
+  const q = <T,>(sql: string) => fresh.as<T>(SERVICE, sql);
+  const [event] = await q<EventRow>(`select * from public.events where id = 'eabc123'`);
+  const files = await q<{ pilot_id: string; task: string; round: number; storage_path: string; sha256: string; size: number; name: string; uploaded_at: string }>(`select * from public.files`);
+  const gz = new Map(prepared.uploads.map((u) => [u.path, u.bytes]));
+  const out = buildBackup({
+    event, pilots: await q<PilotRow>(`select * from public.pilots`), jumps: await q<JumpRow>(`select * from public.jumps`),
+    reviews: await q<ReviewRow>(`select pilot_id, task, round, reviewer_name, legacy_uid, at from public.reviews order by at, id`),
+    tracks: await q(`select pilot_id, task, round, packed from public.tracks`),
+    originals: Object.fromEntries(files.map((f) => [`${f.pilot_id}-${f.task}-${f.round}`, { name: f.name, size: f.size, sha256: f.sha256, gz: gz.get(f.storage_path)!, at: f.uploaded_at }])),
+    log: await q(`select at, who, actor, text, jump_key, data from public.audit_log where event_id = 'eabc123' order by at, id`), exportedBy: 'Admin',
+  });
+  await fresh.close();
+
+  const byId = (xs: { id?: unknown }[]) => Object.fromEntries(xs.map((x) => [String(x.id), normalize(x as Record<string, unknown>)]));
+  expect(byId(out.jumps as never)).toStrictEqual(byId(backup.jumps as never));
+  const { published, ...ev } = out.event;
+  expect(published).toBe(false);
+  expect(normalize(ev)).toStrictEqual(normalize(backup.event));
+  expect(out.pilots).toStrictEqual(backup.pilots);
+  expect(out.tracks).toStrictEqual(backup.tracks);
+  const sha = (o: Record<string, { sha256?: string } | null>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v).map(([k, v]) => [k, v!.sha256]));
+  expect(sha(out.originals!)).toStrictEqual(sha(backup.originals!));
+  expect(out.log!.slice(0, backup.log!.length).map((l) => [l.at, l.who, l.text, l.jid])).toStrictEqual(backup.log!.map((l) => [l.at, l.who, l.text, l.jid]));
+  // And it imports again (same format, same checks).
+  expect(prepareImport(parseBackup(JSON.stringify(out))).warnings).toEqual([]);
 });

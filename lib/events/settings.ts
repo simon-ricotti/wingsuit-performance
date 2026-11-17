@@ -126,3 +126,30 @@ export function parseEventSettings(f: Record<string, string | undefined>): Event
     },
   };
 }
+
+// ---------- summary lines (acta, CSV) ----------
+type EventSummary = Pick<EventRow, 'cfg' | 'units' | 'lane' | 'sep_check' | 'mode' | 'rounds' | 'judging'>;
+
+/** "Ventana 2500–1500 m AGL · DZ a 26 m · carril 600 m" (cfgLine in the previous platform). */
+export function cfgLine(ev: EventSummary): string {
+  const c = { ...DEFAULT_CFG, ...(ev.cfg as Partial<typeof DEFAULT_CFG>) }, ft = ev.units === 'ft', u = ft ? 'ft' : 'm';
+  const v = (m: number) => (ft ? String(metresToFeet(m)) : String(Math.round(m)));
+  return `Ventana ${v(c.top)}–${v(c.bottom)} ${u} AGL · DZ a ${v(c.elev)} ${u}${ev.lane ? ` · carril ${c.laneWidth} m` : ''}`;
+}
+
+export const judgingLabel = (J: Judging) => (J.profile === 'custom' ? 'Personalizado' : JUDGING_PROFILES[J.profile].label);
+
+/** Differences with the FAI 2026 rules for this event (profileDiffs in the previous platform). */
+export function profileDiffs(ev: EventSummary): string[] {
+  const J = judgingOf(ev.judging), F = JUDGING_PROFILES.fai, c = { ...DEFAULT_CFG, ...(ev.cfg as Partial<typeof DEFAULT_CFG>) }, out: string[] = [];
+  if (J.reviews !== F.reviews) out.push(`${J.reviews} revisión por salto (FAI: 2 jueces)`);
+  if (J.door !== F.door) out.push('salidas: ' + DOOR_LABELS[J.door].toLowerCase());
+  if (J.gpsRule !== F.gpsRule) out.push('GPS de menos de 5 Hz o SEP alto: aviso, no re-salto');
+  if (J.exitRule !== F.exitRule) out.push('salida fuera de 3200–3353 m: aviso, no re-salto');
+  if (Math.abs(c.top - 2500) > 1 || Math.abs(c.bottom - 1500) > 1) out.push(`ventana ${Math.round(c.top)}–${Math.round(c.bottom)} m`);
+  if (Math.abs(c.exitMin - 3200) > 1 || Math.abs(c.exitMax - 3353) > 1) out.push(`salida ${Math.round(c.exitMin)}–${Math.round(c.exitMax)} m`);
+  if (!ev.lane) out.push('sin carril');
+  if (!ev.sep_check) out.push('sin control de separación');
+  if (ev.mode === 'competition' && ev.rounds !== 3) out.push(`${ev.rounds} ronda${ev.rounds === 1 ? '' : 's'} (FAI: 3)`);
+  return out;
+}

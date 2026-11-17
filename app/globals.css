@@ -128,3 +128,17 @@ a, button, select { touch-action: manipulation; }
 .chk { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .chk i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
 @media (max-width: 860px) { .replay { grid-template-columns: 1fr; } .view3d { height: 380px; } }
+
+/* Acta: prints in black on white, without navigation. */
+.acta-t { width: 100%; }
+.standings td.wrap { white-space: normal; min-width: 14rem; }
+.firmas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 48px; }
+.firmas div { border-top: 1px solid var(--fg); padding-top: 6px; font-size: 13px; color: var(--muted); }
+@media print {
+  :root { color-scheme: light; --bg: #fff; --fg: #000; --muted: #444; --line: #bbb; }
+  .noprint, nextjs-portal { display: none !important; }
+  body { background: #fff; color: #000; }
+  .acta { font-size: 11px; max-width: none; padding: 0; }
+  .acta-t tr { break-inside: avoid; }
+  .standings tbody td:nth-child(-n+2) { position: static; }
+}
