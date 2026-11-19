@@ -16,7 +16,7 @@ function SlotRow({ event, s }: { event: string; s: Slot }) {
       <b>{s.label}</b>
       <span className="small muted">{s.done} de {s.live} revisados{s.voided ? `, ${s.voided} anulado${s.voided > 1 ? 's' : ''}` : ''}</span>
       {s.validatedBy != null
-        ? <><span className="pill good">Validada por {s.validatedBy || 'sin nombre'}</span><button type="submit" disabled={pending}>Reabrir</button></>
+        ? <><span className="pill good">Validada por {s.validatedBy || 'sin nombre'}</span><button type="submit" className="secondary" disabled={pending}>Reabrir</button></>
         : <><span className="pill warn">Provisoria</span><button type="submit" disabled={pending || !ready} title={ready ? undefined : 'Faltan saltos por revisar'}>Validar tarea</button></>}
       <span aria-live="polite">{state.error && <span className="error small">{state.error}</span>}</span>
     </form>

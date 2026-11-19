@@ -115,7 +115,7 @@ export function SignForms({ event, jump, canSign, hasReviews }: { event: string;
         <form action={action}><Hidden event={event} jump={jump} />
           <button type="submit" disabled={pending || !canSign}>{pending ? 'Firmando…' : 'Firmar revisión'}</button></form>
         {hasReviews && <form action={cAction}><Hidden event={event} jump={jump} />
-          <button type="submit" disabled={cPending}>{cPending ? 'Borrando…' : 'Borrar firmas'}</button></form>}
+          <button type="submit" className="secondary" disabled={cPending}>{cPending ? 'Borrando…' : 'Borrar firmas'}</button></form>}
       </div>
       <Feedback state={state} pending={pending} ok="Revisión firmada." />
       <Feedback state={cState} pending={cPending} ok="Firmas borradas." />

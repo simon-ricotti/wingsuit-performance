@@ -13,7 +13,7 @@ export default async function EventsPage() {
 
   return (
     <main>
-      <p><Link href="/admin">← Administración</Link></p>
+      <p><Link className="back" href="/admin">← Administración</Link></p>
       <div className="row spread">
         <h1>Jornadas</h1>
         {s.role === 'admin' && <Link className="button" href="/admin/events/new">Nueva jornada</Link>}

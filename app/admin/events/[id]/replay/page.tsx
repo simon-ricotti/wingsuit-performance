@@ -29,7 +29,7 @@ export default async function ReplayPage({ params, searchParams }: { params: Pro
   const slots = [...new Set(ok.map((j) => `${j.task}|${j.round}`))]
     .sort((a, b) => +a.split('|')[1] - +b.split('|')[1] || TASKS.indexOf(a.split('|')[0] as Task) - TASKS.indexOf(b.split('|')[0] as Task));
   const current = slot && slots.includes(slot) ? slot : slots[0];
-  const back = <p><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>;
+  const back = <p><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>;
   if (!current) return <main>{back}<h1>Replay</h1><p className="sub">Cuando haya saltos cargados vas a poder reproducir la tanda acá.</p></main>;
 
   const [task, round] = current.split('|');

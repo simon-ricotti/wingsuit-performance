@@ -33,7 +33,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
   return (
     <main className="wide">
-      <p className="noprint"><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>
+      <p className="noprint"><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <h1>Orden de salida: {ev.name}</h1>
 
       <section className="stack noprint">

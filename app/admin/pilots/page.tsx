@@ -12,7 +12,7 @@ export default async function PilotsPage() {
 
   return (
     <main>
-      <p><Link href="/admin">← Administración</Link></p>
+      <p><Link className="back" href="/admin">← Administración</Link></p>
       <h1>Pilotos</h1>
       <h2>Agregar</h2>
       <PilotForm initial={{ id: null, name: '', suit: '', gender: '', team: '' }} />

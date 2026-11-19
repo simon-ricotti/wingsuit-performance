@@ -6,7 +6,7 @@ export const metadata = { title: 'Cómo se puntúa · Wingsuit Performance', des
 export default function ScoringPage() {
   return (
     <main className="rules">
-      <p><Link href="/">← Inicio</Link></p>
+      <p><Link className="back" href="/">← Inicio</Link></p>
       <h1>Cómo se puntúa</h1>
       <p>El cálculo sigue las Reglas de Competencia de Wingsuit Flying de la FAI (ISC), edición 2026, evento Performance. Entre paréntesis va el artículo.</p>
         <h2>El salto</h2>

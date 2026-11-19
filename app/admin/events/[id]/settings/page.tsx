@@ -27,7 +27,7 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
 
   return (
     <main>
-      <p><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>
+      <p><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <h1>Ajustes e historial</h1>
 
       {s.role === 'admin' ? (

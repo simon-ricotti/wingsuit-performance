@@ -64,7 +64,7 @@ export default async function StandingsPage({ params, searchParams }: { params: 
 
   return (
     <main className="wide">
-      <p><Link href="/admin/events">← Jornadas</Link></p>
+      <p><Link className="back" href="/admin/events">← Jornadas</Link></p>
       <h1>{ev.name}</h1>
       <p className="sub">{[ev.date, ev.dz].filter(Boolean).join(', ')}{ev.published ? <> · <Link href={`/results/${id}`}>publicada</Link></> : ' (sin publicar)'}</p>
       <nav className="row">

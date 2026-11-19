@@ -36,7 +36,7 @@ export default async function PublicEventPage({ params }: { params: Promise<{ id
 
   return (
     <main className="wide">
-      <p><Link href="/results">← Resultados</Link></p>
+      <p><Link className="back" href="/results">← Resultados</Link></p>
       <div className="row spread">
         <div>
           <h1>{ev.name}</h1>

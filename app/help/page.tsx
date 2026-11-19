@@ -7,7 +7,7 @@ export const metadata = { title: 'Ayuda · Wingsuit Performance', description: '
 export default function HelpPage() {
   return (
     <main className="rules help">
-      <p><Link href="/">← Inicio</Link></p>
+      <p><Link className="back" href="/">← Inicio</Link></p>
       <h1>Ayuda</h1>
       <p>Cómo usar el sistema en una jornada, según tu rol. Para el reglamento, mirá <Link href="/judging">Reglamento para jueces</Link> y <Link href="/scoring">Cómo se puntúa</Link>.</p>
       <nav aria-label="Secciones" className="row">

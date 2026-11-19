@@ -20,7 +20,7 @@ export default async function AccountPage() {
   );
   if (!s.pilotId) {
     return <main>{head}<p>Tu usuario todavía no está vinculado a una ficha de piloto. Pedíselo al organizador: lo hace desde “Usuarios y roles”.</p>
-      <form action="/auth/logout" method="post"><button type="submit">Salir</button></form></main>;
+      <form action="/auth/logout" method="post"><button type="submit" className="secondary">Salir</button></form></main>;
   }
 
   const admin = createAdminClient();
@@ -76,7 +76,7 @@ export default async function AccountPage() {
         </div>
       )}
       <p className="sub small">Los resultados son provisorios hasta que los jueces revisan los saltos y validan cada tarea. <Link href="/help#piloto">Ayuda</Link>.</p>
-      <form action="/auth/logout" method="post"><button type="submit">Salir</button></form>
+      <form action="/auth/logout" method="post"><button type="submit" className="secondary">Salir</button></form>
     </main>
   );
 }

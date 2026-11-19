@@ -12,7 +12,7 @@ const InSystem = ({ children }: { children: ReactNode }) => <p className="note s
 export default function JudgingPage() {
   return (
     <main className="rules help">
-      <p><Link href="/">← Inicio</Link> · <Link href="/help">Ayuda</Link> · <Link href="/scoring">Cómo se puntúa</Link></p>
+      <p><Link className="back" href="/">← Inicio</Link> · <Link href="/help">Ayuda</Link> · <Link href="/scoring">Cómo se puntúa</Link></p>
       <h1>Reglamento para jueces</h1>
       <p>Lo que hay que saber para juzgar una competencia de Wingsuit Performance según las <b>Reglas de Competencia de Wingsuit Flying de la FAI, edición 2026</b>. Entre paréntesis va el artículo. Es un resumen: ante cualquier duda vale el <a href="https://www.dfv.aero/downloads/2026_ISC_CR_WS.pdf">texto oficial de la FAI</a>.</p>
       <nav aria-label="Secciones" className="row small">

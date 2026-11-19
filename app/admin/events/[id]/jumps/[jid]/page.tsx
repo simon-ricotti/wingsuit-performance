@@ -57,7 +57,7 @@ export default async function JumpPage({ params }: { params: Promise<{ id: strin
 
   return (
     <main className="wide">
-      <p><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>
+      <p><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <div className="row spread">
         <h1>{name(pilotId)}: {TASK_LABEL[task as keyof typeof TASK_LABEL]}, {roundName(round)}</h1>
         <span className={'pill' + (status.code === 'ok' ? ' good' : status.code === 'pending' ? '' : ' warn')}>{status.label}</span>
@@ -83,7 +83,7 @@ export default async function JumpPage({ params }: { params: Promise<{ id: strin
       <p>{str(j.fileName) || '–'}{file?.size ? `, ${fmt(file.size / 1024, 0)} KB` : ''}{j.uploadedAt ? `, cargado el ${when(j.uploadedAt as number)}` : ''}{j.uploadedBy ? ` por ${j.uploadedBy}` : ''}{j.device ? ` (${j.device})` : ''}</p>
       {j.fileHash ? <p className="small">Huella SHA-256: <span className="mono">{String(j.fileHash)}</span></p>
         : <p className="sub small">Este salto se cargó antes de que la plataforma guardara la huella del archivo.</p>}
-      <div className="row">{file && <a className="button" href={`/admin/events/${id}/jumps/${jid}/original`} download>Descargar el original</a>}</div>
+      <div className="row">{file && <a className="button secondary" href={`/admin/events/${id}/jumps/${jid}/original`} download>Descargar el original</a>}</div>
       {j.fileHash ? <VerifyFile hash={String(j.fileHash)} /> : null}
 
       <p><Link href={`/admin/events/${id}/replay?slot=${encodeURIComponent(`${task}|${round}`)}`}>Ver el replay de la tanda</Link></p>

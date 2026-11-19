@@ -24,7 +24,7 @@ export default async function PilotPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main>
-      <p><Link href="/admin/pilots">← Pilotos</Link></p>
+      <p><Link className="back" href="/admin/pilots">← Pilotos</Link></p>
       <h1>{p.name}</h1>
       <p className="sub">{jumps} saltos cargados</p>
       <PilotForm initial={{ id: p.id, name: p.name, suit: p.suit, gender: p.gender === 'F' ? 'F' : '', team: p.team }} />

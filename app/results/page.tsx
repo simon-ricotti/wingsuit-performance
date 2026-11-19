@@ -9,7 +9,7 @@ export default async function ResultsPage() {
   const events = await publishedEvents();
   return (
     <main>
-      <p><Link href="/">← Inicio</Link></p>
+      <p><Link className="back" href="/">← Inicio</Link></p>
       <h1>Resultados</h1>
       <p className="sub">Jornadas de Wingsuit Performance puntuadas con el reglamento FAI 2026. <Link href="/scoring">Cómo se puntúa</Link>.</p>
       {!events?.length ? <p className="sub">Todavía no hay jornadas publicadas.</p> : (

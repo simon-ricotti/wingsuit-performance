@@ -21,7 +21,7 @@ export default async function PilotUploadPage({ params }: { params: Promise<{ id
   if (!ev || !ev.pilot_uploads) notFound();
   return (
     <main>
-      <p><Link href="/account">← Mis saltos</Link></p>
+      <p><Link className="back" href="/account">← Mis saltos</Link></p>
       <h1>Cargar mi salto</h1>
       <p className="sub">{ev.name}</p>
       {!pilot ? <p>Tu usuario todavía no está vinculado a una ficha de piloto. Pedíselo al organizador.</p> : (

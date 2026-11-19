@@ -20,7 +20,7 @@ export default async function RankingPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="wide">
-      <p><Link href="/admin">← Administración</Link></p>
+      <p><Link className="back" href="/admin">← Administración</Link></p>
       <h1>Ranking histórico</h1>
       <p className="sub">Mejor marca de cada piloto en cada tarea, entre todas las jornadas guardadas.</p>
       <nav className="seg" aria-label="Saltos que cuentan">

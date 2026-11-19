@@ -20,7 +20,7 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
   ]);
   return (
     <main>
-      <p><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>
+      <p><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <h1>Cargar salto</h1>
       <UploadForm
         event={ev}

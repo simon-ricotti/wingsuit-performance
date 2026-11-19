@@ -11,7 +11,7 @@ export default async function NewEventPage() {
   await requireRole('admin');
   return (
     <main>
-      <p><Link href="/admin/events">← Jornadas</Link></p>
+      <p><Link className="back" href="/admin/events">← Jornadas</Link></p>
       <h1>Nueva jornada</h1>
       <EventForm initial={formValuesOf(null, today())} jumps={0} />
     </main>

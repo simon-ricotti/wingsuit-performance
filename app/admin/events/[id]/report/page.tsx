@@ -29,7 +29,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="wide acta">
-      <p className="noprint"><Link href={`/admin/events/${id}`}>← {ev.name}</Link></p>
+      <p className="noprint"><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <div className="noprint stack">
         <div className="row">
           <PrintButton />

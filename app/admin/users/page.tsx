@@ -27,7 +27,7 @@ export default async function UsersPage() {
 
   return (
     <main>
-      <p><Link href="/admin">← Administración</Link></p>
+      <p><Link className="back" href="/admin">← Administración</Link></p>
       <h1>Usuarios y roles</h1>
       <p className="sub">
         Cualquiera puede entrar con su mail por <b>/login</b> y queda como <b>piloto</b>. Desde acá le das el rol de juez u organizador,
