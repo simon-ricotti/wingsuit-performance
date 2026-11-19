@@ -14,7 +14,7 @@ export default async function ResultsPage() {
       <p className="sub">Jornadas de Wingsuit Performance puntuadas con el reglamento FAI 2026. <Link href="/scoring">Cómo se puntúa</Link>.</p>
       {!events?.length ? <p className="sub">Todavía no hay jornadas publicadas.</p> : (
         <ul className="menu">{events.map((e) => (
-          <li key={e.id}><Link href={`/results/${e.id}`}>{e.name}</Link>{e.date ? <span className="muted small"> {e.date}{e.dz ? `, ${e.dz}` : ''}</span> : null}</li>
+          <li key={e.id}><Link href={`/results/${e.id}`} className="stack" style={{ gap: 2, alignItems: 'flex-start' }}>{e.name}{e.date ? <span className="muted small">{e.date}{e.dz ? `, ${e.dz}` : ''}</span> : null}</Link></li>
         ))}</ul>
       )}
     </main>

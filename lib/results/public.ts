@@ -24,3 +24,23 @@ export async function publishedEvent(id: string) {
   const { data: pilots } = await admin.from('pilots').select('id, name, gender, team').in('id', ids.length ? ids : ['-']);
   return { ev, jumps, pilots: (pilots ?? []) as (PilotInfo & { id: string })[] };
 }
+
+/**
+ * Every published event scored within itself (public ranking): same columns as the results pages.
+ * shortcut: reads all published jumps on each regeneration (at most once a minute); a summary table if it grows a lot.
+ */
+export async function publishedResults() {
+  const admin = createAdminClient();
+  const { data: events } = await admin.from('events').select(EVENT_COLS).eq('published', true).order('date', { ascending: false, nullsFirst: false }).returns<EventRow[]>();
+  const ids = (events ?? []).map((e) => e.id);
+  const rows: JumpRow[] = [];
+  for (let from = 0; ids.length; from += 1000) {
+    const { data } = await admin.from('jumps').select(JUMP_COLS).in('event_id', ids).order('event_id').order('pilot_id').order('task').order('round').range(from, from + 999).returns<JumpRow[]>();
+    rows.push(...(data ?? []).map((r) => ({ ...r, extra: {} }) as JumpRow));
+    if (!data || data.length < 1000) break;
+  }
+  const pids = [...new Set(rows.map((r) => r.pilot_id))];
+  const { data: pilots } = await admin.from('pilots').select('id, name').in('id', pids.length ? pids : ['-']);
+  const names = new Map((pilots ?? []).map((p) => [p.id as string, p.name as string]));
+  return { events: events ?? [], rows, name: (pid: string) => names.get(pid) ?? '' };
+}

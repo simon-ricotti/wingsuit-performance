@@ -28,9 +28,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </svg>
               <span translate="no">Wingsuit Performance</span>
             </Link>
-            <Link href="/results">Resultados</Link>
-            <Link href="/help">Ayuda</Link>
-            <Link href="/admin">Mi panel</Link>
+            <nav aria-label="Principal">
+              <Link href="/results">Resultados</Link>
+              <Link href="/ranking">Ranking</Link>
+              <Link href="/tracks">Tracks</Link>
+              <Link href="/help">Ayuda</Link>
+              <Link href="/admin">Mi panel</Link>
+            </nav>
           </div>
         </header>
         {children}

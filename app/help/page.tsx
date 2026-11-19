@@ -32,7 +32,8 @@ export default function HelpPage() {
             <li><b>Modo:</b> Competencia (rondas fijas de 3 tareas) o Libre (entrenamiento).</li>
             <li><b>Elevación del DZ</b> sobre el nivel del mar: obligatoria y clave, define la altura de la ventana. AVA: 26 m.</li>
             <li>Ventana y salida: dejá los valores FAI salvo que haya un motivo.</li>
-            <li><b>Carril:</b> cargá los puntos de referencia, uno por línea: <code>Norte, -33.0124, -60.6400</code>. Sin puntos, el carril no se evalúa.</li>
+            <li><b>Carril:</b> cargá los puntos de referencia en el mapa satelital (<i>Agregar punto</i> y tocá el terreno; arrastralos para moverlos) o escribilos, uno por línea: <code>Norte, -33.0124, -60.6400</code>. Sin puntos, el carril no se evalúa.</li>
+            <li><b>Pasada:</b> con <i>Marcar la pasada</i> tocá dónde empieza y dónde termina. El mapa marca una salida cada 600 m (FAI 5.5.4) y un carril aproximado hacia cada punto, para ver si los puntos quedan bien ubicados. Es solo para planificar: no cambia el puntaje.</li>
             <li><b>Perfil de juzgamiento:</b> <i>FAI estricto</i> (dos firmas de jueces distintos, re-salto por GPS o salida fuera de norma) o <i>Argentina</i> (una firma, esos casos solo se marcan).</li>
             <li><b>Carga de saltos por los pilotos:</b> activalo solo si querés que cada piloto suba los suyos; si no, los cargan los jueces.</li>
           </ul>
@@ -65,7 +66,7 @@ export default function HelpPage() {
       <h3>Revisar y firmar</h3>
       <ul>
         <li>En la clasificación, el punto al lado de cada resultado indica el estado: <b>verde</b> revisado, <b>ámbar</b> falta una decisión, <b>gris</b> sin revisar, <b>rojo</b> anulado. El mejor de cada ronda va resaltado.</li>
-        <li>Tocá un resultado para ver el detalle: mapa del carril, velocidad vertical y precisión del GPS.</li>
+        <li>Tocá un resultado para ver el detalle: mapa del carril, velocidad vertical, precisión del GPS y el track <b>sobre el terreno</b>, con el carril de 600 m y las franjas de −10, −20 y −50 %.</li>
         <li><b>Decisiones del juez</b> (lo pendiente aparece en un aviso): validar el salto o conceder re-salto si el GPS o la salida están fuera de norma; confirmar la penalidad de carril si está al límite; aplicar o no el cero por separación; salida fuera de tiempo; penalidad a mano; notas. → <i>Guardar decisiones</i>.</li>
         <li>Si el punto de referencia o el inicio del carril no corresponden, corregilos en el mismo detalle → <i>Recalcular carril</i>.</li>
         <li>Cuando está todo decidido, <i>Firmar revisión</i>. Firmás con tu usuario. Con perfil FAI hacen falta dos jueces distintos. Si después cambia una decisión, las firmas se borran y hay que volver a firmar (quedan en el historial).</li>
@@ -74,7 +75,7 @@ export default function HelpPage() {
       <ul>
         <li>Cuando todos los saltos de una tarea de una ronda están revisados, <i>Validar tarea</i> (debajo de la clasificación). Si después cambia un salto de esa tarea, se reabre sola; cambiar solo las notas no la reabre.</li>
         <li>Antes de cada ronda nueva, en <i>Orden de salida</i> → <i>Armar orden</i>: usa la clasificación de la jornada hasta ese momento.</li>
-        <li><i>Replay</i> muestra la tanda en 3D con la tabla en vivo: sirve para explicar un resultado a los pilotos.</li>
+        <li><i>Replay</i> muestra la tanda en 3D con la tabla en vivo y, abajo, los tracks sobre el satélite con el carril y las franjas de cada piloto: sirve para explicar un resultado a los pilotos.</li>
         <li>Para comprobar que un archivo es el mismo que se cargó, en el detalle del salto usá <i>Verificar un archivo</i> (compara la huella, no sube nada).</li>
       </ul>
 
@@ -84,6 +85,8 @@ export default function HelpPage() {
         <li>Si la jornada lo permite, aparece en <i>Cargar un salto</i>: elegí tarea, ronda y tu punto de referencia, subí el archivo del GPS y guardá. Los jueces lo revisan.</li>
         <li>No podés reemplazar un salto ya cargado: si hace falta (por un re-salto), lo hace un juez.</li>
         <li>Los resultados son provisorios hasta que los jueces validan cada tarea.</li>
+        <li><b>Saltos sueltos:</b> en <Link href="/tracks">Tracks</Link> podés subir uno o más archivos sin jornada y ver el mapa, las métricas y el replay. No se guarda nada; para que un salto quede en tu historial, cargalo en una jornada libre abierta.</li>
+        <li>El <Link href="/ranking">Ranking</Link> muestra los récords y la mejor marca de cada piloto en las jornadas publicadas, de competencia y de entrenamiento.</li>
       </ul>
 
       <h2 id="problemas">Problemas frecuentes</h2>

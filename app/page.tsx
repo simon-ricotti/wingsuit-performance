@@ -24,6 +24,8 @@ export default function Home() {
       <p className="sub">Puntaje FAI ISC Wingsuit Flying 2026 · DZ AVA (Alvear, Rosario).</p>
       <nav className="row" aria-label="Secciones">
         <Link className="button" href="/results">Ver resultados</Link>
+        <Link href="/ranking">Ranking y récords</Link>
+        <Link href="/tracks">Ver mis tracks</Link>
         <Link href="/scoring">Cómo se puntúa</Link>
         <Link href="/judging">Reglamento para jueces</Link>
         <Link href="/login">Ingresar</Link>
