@@ -13,7 +13,8 @@ Idioma del código: **inglés** (identificadores, comentarios, nombres de archiv
   - Mapa satelital (`app/ui/sat-map.tsx`, Leaflet 1.9.4 + Esri World Imagery): puntos de referencia y pasada en los ajustes de la jornada, track con carril y franjas en el detalle del salto y en el replay.
   - `/tracks`: saltos sueltos sin jornada, todo en el navegador (mapa, métricas, replay); no guarda.
   - `/ranking`: público, récords y mejor marca por tarea de las jornadas publicadas (componente compartido con `/admin/ranking`).
-  - **Pendiente del usuario:** aplicar `update-jump-run.sql` (raíz del proyecto, sin subir) en el SQL Editor de Supabase. Agrega `events.jump_run` y deja que `save_event` la guarde; sin eso la pasada se dibuja pero no se guarda. Verificado con PGlite. Después, borrar el archivo.
+  - `update-jump-run.sql` (columna `events.jump_run`) aplicado el 19 nov 2026.
+  - **Datos de demo cargados y publicados (19 nov 2026):** "Demo: Copa AVA 2026, fecha 1" (`edemoava2026`, 2 rondas, 36 saltos) y "Demo: entrenamiento AVA" (`edemoentreno`, 6 saltos), con los pilotos `pdemo01` a `pdemo06`. Son tracks sintéticos sobre AVA, puntuados con el motor. Están en `.demo/` (excluido de git): las copias para `/admin/import`, el generador (`npx tsx .demo/generate.mts .demo`, se corre desde la raíz) y `delete-demo.sql`, que los borra sin dejar rastro (también del archivo y del historial). Ese script se probó con PGlite. Desde la app no se puede borrar una jornada con saltos.
   - Pendiente de probar con datos reales: el carril sobre el satélite con tracks de AVA y puntos cargados (con los fixtures de Skyderby solo se probó en `/tracks`), y la barra en el ancho del celular.
 - **Antes de una competencia oficial:**
   - reactivar el proyecto de Supabase (el plan gratis lo pausa tras 7 días sin uso);
