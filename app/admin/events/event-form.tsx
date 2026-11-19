@@ -1,7 +1,9 @@
 'use client';
-import { useActionState, useState } from 'react';
+import { useActionState, useMemo, useRef, useState } from 'react';
 import { saveEvent } from './actions';
-import { DOOR_LABELS, JUDGING_PROFILES, metresToFeet, toMetres, type EventFormValues, type Judging } from '@/lib/events/settings';
+import { DOOR_LABELS, JUDGING_PROFILES, metresToFeet, parseRefs, toMetres, type EventFormValues, type Judging } from '@/lib/events/settings';
+import type { RefPoint } from '@/lib/engine';
+import { SatMap } from '@/app/ui/sat-map';
 import type { FormState } from '@/lib/admin/write';
 
 const ALT_FIELDS = ['elev', 'top', 'bottom', 'exitMin', 'exitMax'] as const;
@@ -11,6 +13,12 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
   const [units, setUnits] = useState(initial.units);
   const [alts, setAlts] = useState(() => Object.fromEntries(ALT_FIELDS.map((k) => [k, initial[k]])) as Record<(typeof ALT_FIELDS)[number], string>);
   const [judging, setJudging] = useState<Judging>(initial.judging);
+  const [refsText, setRefsText] = useState(initial.refs);
+  const [jumpRun, setJumpRun] = useState(initial.jumpRun);
+  // The list is the source of truth; while a line is half typed the map keeps the last valid points.
+  const lastRefs = useRef<RefPoint[]>([]);
+  const mapRefs = useMemo(() => { try { lastRefs.current = parseRefs(refsText); } catch { /* keep last */ } return lastRefs.current; }, [refsText]);
+  const fromMap = (r: RefPoint[]) => setRefsText(r.map((x) => `${x.name}, ${x.lat}, ${x.lon}`).join('\n'));
   const u = units === 'ft' ? 'ft' : 'm';
 
   // Switching units converts the typed altitudes, as the previous platform does.
@@ -78,8 +86,11 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
           options={[['1', 'Cero si pasan a menos de 150 m'], ['0', 'No evaluar']]} />
       </div>
       <label className="field">Puntos de referencia en tierra, uno por línea: nombre, latitud, longitud
-        <textarea name="refs" rows={3} defaultValue={initial.refs} placeholder="Norte, -33.0124, -60.6400" />
+        <textarea name="refs" rows={3} value={refsText} onChange={(e) => setRefsText(e.target.value)} placeholder="Norte, -33.0124, -60.6400" />
       </label>
+      <input type="hidden" name="jumpRun" value={jumpRun ? [jumpRun.a.lat, jumpRun.a.lon, jumpRun.b.lat, jumpRun.b.lon].join(',') : ''} />
+      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={600} />
+      <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de 600 m desde el centro de la pasada a cada punto; el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento
         FAI 2026. La unidad elegida se usa para cargar y mostrar las alturas de esta jornada; los resultados siguen en segundos, metros y km/h.</p>
 

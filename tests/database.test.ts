@@ -520,6 +520,16 @@ test('competition state: only whitelisted fields change, with before/after in th
   await expect(db.run({ role: 'authenticated', uid: admin }, `select public.set_event_state('eabc123', '{}'::jsonb, 'x', null, 'x')`)).rejects.toThrow(/permission denied/);
 });
 
+test('the planned jump run is saved with the settings and logged, without rescoring', async () => {
+  const run = { a: { lat: -33.05, lon: -60.63 }, b: { lat: -33.07, lon: -60.6 } };
+  const id = (await db.as<{ r: string }>(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin') as r`, [JSON.stringify({ name: 'Con pasada' }), admin]))[0].r;
+  await db.as(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin')`, [JSON.stringify({ id, jump_run: run }), admin]);
+  expect((await db.as<EventRow>(SERVICE, `select jump_run from public.events where id = $1`, [id]))[0].jump_run).toEqual(run);
+  expect((await db.as<{ text: string }>(SERVICE, `select text from public.audit_log order by id desc limit 1`))[0].text).toBe('Se cambiaron los ajustes de la jornada (jump_run)');
+  await db.as(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin')`, [JSON.stringify({ id, jump_run: null }), admin]);
+  expect((await db.as<EventRow>(SERVICE, `select jump_run from public.events where id = $1`, [id]))[0].jump_run).toBeNull();
+});
+
 test('stage 6: the organizer opens an event to pilot uploads (saved and logged like any setting)', async () => {
   const id = (await db.as<{ r: string }>(SERVICE, `select public.save_event($1::jsonb, $2::uuid, 'Admin') as r`, [JSON.stringify({ name: 'Abierta a pilotos', pilot_uploads: true }), admin]))[0].r;
   expect((await db.as<EventRow>(SERVICE, `select pilot_uploads from public.events where id = $1`, [id]))[0].pilot_uploads).toBe(true);

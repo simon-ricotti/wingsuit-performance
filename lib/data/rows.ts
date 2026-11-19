@@ -55,8 +55,11 @@ export interface EventRow {
   units: 'm' | 'ft'; lane: boolean; sep_check: boolean; refs: unknown[]; cfg: Record<string, unknown>;
   judging: Record<string, unknown>; validated: Record<string, unknown>; tiebreak: unknown; task_order: unknown;
   exit_order: unknown; pass_size: number | null; roster: unknown; team_pick: unknown; published: boolean; pilot_uploads: boolean;
-  extra: Record<string, unknown>; created_at: string; updated_at: string;
+  jump_run: JumpRun | null; extra: Record<string, unknown>; created_at: string; updated_at: string;
 }
+
+/** Planned jump run (planning aid on the map, not scored): from a to b. */
+export interface JumpRun { a: { lat: number; lon: number }; b: { lat: number; lon: number } }
 
 export type EventMode = 'free' | 'competition';
 
@@ -118,7 +121,7 @@ export function rowToPilot(r: PilotRow): LegacyPilot {
 
 // ---------- events ----------
 const EVENT_KNOWN = ['id', 'name', 'date', 'dz', 'mode', 'rounds', 'teamSize', 'units', 'lane', 'sepCheck', 'refs', 'cfg',
-  'judging', 'validated', 'tiebreak', 'taskOrder', 'order', 'passSize', 'roster', 'teamPick', 'createdAt', 'published'] as const;
+  'judging', 'validated', 'tiebreak', 'taskOrder', 'order', 'passSize', 'roster', 'teamPick', 'createdAt', 'published', 'jumpRun'] as const;
 
 export function eventToRow(e: LegacyEvent, now: string): EventRow {
   const date = typeof e.date === 'string' && /^\d{4}-\d\d-\d\d$/.test(e.date) ? e.date : null;
@@ -133,7 +136,7 @@ export function eventToRow(e: LegacyEvent, now: string): EventRow {
     refs: Array.isArray(e.refs) ? e.refs : [], cfg: e.cfg ?? {}, judging: e.judging ?? { profile: 'arg' },
     validated: e.validated ?? {}, tiebreak: e.tiebreak ?? null, task_order: e.taskOrder ?? null, exit_order: e.order ?? null,
     pass_size: numOrNull(e.passSize), roster: e.roster ?? null, team_pick: e.teamPick ?? null,
-    published: false, pilot_uploads: false, extra, created_at: iso(e.createdAt, now), updated_at: now,
+    published: false, pilot_uploads: false, jump_run: (e.jumpRun as JumpRun | undefined) ?? null, extra, created_at: iso(e.createdAt, now), updated_at: now,
   };
 }
 
@@ -150,6 +153,7 @@ export function rowToEvent(r: EventRow): LegacyEvent {
   if (r.pass_size != null) e.passSize = r.pass_size;
   if (r.roster != null) e.roster = r.roster;
   if (r.team_pick != null) e.teamPick = r.team_pick;
+  if (r.jump_run != null) e.jumpRun = r.jump_run;
   return e;
 }
 

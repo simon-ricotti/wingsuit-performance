@@ -1,7 +1,7 @@
 // Event settings form: defaults, judging profiles, unit conversion and validation.
 // Mirrors eventForm/readEventForm in legacy/src/app.js. Validation messages are shown to the user (Spanish).
 import { DEFAULT_CFG } from '../engine';
-import type { EventMode, EventRow } from '../data/rows';
+import type { EventMode, EventRow, JumpRun } from '../data/rows';
 
 // ---------- units ----------
 const FT = 0.3048;
@@ -46,7 +46,7 @@ export interface EventFormValues {
   name: string; date: string; mode: EventMode; rounds: string; teamSize: string; dz: string; units: 'm' | 'ft';
   elev: string; top: string; bottom: string; exitMin: string; exitMax: string;
   lane: boolean; sepCheck: boolean; refs: string; pilotUploads: boolean;
-  judging: Judging;
+  judging: Judging; jumpRun: JumpRun | null;
 }
 
 export function formValuesOf(ev: EventRow | null, today: string): EventFormValues {
@@ -63,12 +63,12 @@ export function formValuesOf(ev: EventRow | null, today: string): EventFormValue
     exitMin: altitudeIn(cfg.exitMin, ft), exitMax: altitudeIn(cfg.exitMax, ft),
     lane: ev ? ev.lane : true, sepCheck: ev ? ev.sep_check : true, pilotUploads: ev?.pilot_uploads ?? false,
     refs: refs.map((r) => `${r.name}, ${r.lat}, ${r.lon}`).join('\n'),
-    judging: judgingOf(ev?.judging),
+    judging: judgingOf(ev?.judging), jumpRun: ev?.jump_run ?? null,
   };
 }
 
 /** Fields accepted by public.save_event. */
-export type EventSettings = Pick<EventRow, 'name' | 'date' | 'dz' | 'mode' | 'rounds' | 'team_size' | 'units' | 'lane' | 'sep_check' | 'refs' | 'cfg' | 'judging' | 'pilot_uploads'>;
+export type EventSettings = Pick<EventRow, 'name' | 'date' | 'dz' | 'mode' | 'rounds' | 'team_size' | 'units' | 'lane' | 'sep_check' | 'refs' | 'cfg' | 'judging' | 'pilot_uploads' | 'jump_run'>;
 
 export class SettingsError extends Error {}
 
@@ -93,6 +93,13 @@ export function parseRefs(text: string): { name: string; lat: number; lon: numbe
   return refs;
 }
 
+/** "lat,lon,lat,lon" from the map (hidden field) → planned jump run, or null. Not scored. */
+export function parseJumpRun(text: string | undefined): JumpRun | null {
+  const n = (text ?? '').split(',').map(Number);
+  if (n.length !== 4 || !n.every(isFinite) || Math.abs(n[0]) > 90 || Math.abs(n[2]) > 90 || Math.abs(n[1]) > 180 || Math.abs(n[3]) > 180) return null;
+  return { a: { lat: n[0], lon: n[1] }, b: { lat: n[2], lon: n[3] } };
+}
+
 /** Form fields → settings in metres, as readEventForm does. Throws SettingsError with a message for the user. */
 export function parseEventSettings(f: Record<string, string | undefined>): EventSettings {
   const ft = f.units === 'ft';
@@ -111,7 +118,7 @@ export function parseEventSettings(f: Record<string, string | undefined>): Event
   return {
     name, date, dz: (f.dz ?? '').trim(), mode: f.mode === 'competition' ? 'competition' : 'free',
     rounds: clampInt(f.rounds, 3, 1, 12), team_size: clampInt(f.teamSize, 3, 1, 10), units: ft ? 'ft' : 'm',
-    lane: f.lane === '1', sep_check: f.sepCheck === '1', refs, pilot_uploads: f.pilotUploads === '1',
+    lane: f.lane === '1', sep_check: f.sepCheck === '1', refs, pilot_uploads: f.pilotUploads === '1', jump_run: parseJumpRun(f.jumpRun),
     cfg: {
       elev, top, bottom,
       exitMin: toMetres(num(f.exitMin, dv(DEFAULT_CFG.exitMin)), ft),

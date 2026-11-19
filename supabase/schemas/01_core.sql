@@ -60,7 +60,8 @@ create table public.events (
   extra       jsonb not null default '{}',
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
-  pilot_uploads boolean not null default false     -- pilots may upload their own jumps (stage 6)
+  pilot_uploads boolean not null default false,    -- pilots may upload their own jumps (stage 6)
+  jump_run    jsonb                                 -- planning aid, not scored: {a:{lat,lon}, b:{lat,lon}} (5.4, 5.5.1)
 );
 
 -- ---------- jumps ----------

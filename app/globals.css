@@ -200,3 +200,8 @@ a, button, select { touch-action: manipulation; }
 .fig { margin: 14px 0 16px; }
 .fig svg { display: block; width: 100%; height: auto; max-width: 720px; }
 .fig figcaption { font-size: .88rem; color: var(--muted); margin-top: 6px; }
+/* Satellite map: its own stacking context so Leaflet panes stay under the sticky app bar. */
+.satmap { isolation: isolate; border-radius: 12px; border: 1px solid var(--line); background: #1b1b1b; }
+.refpin { background: #fff; border: 3px solid #701968; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
+.satmap .leaflet-tooltip { font: 700 12px/1.3 var(--font-body); }
+.row .seg { margin-bottom: 0; }
