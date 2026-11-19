@@ -12,6 +12,9 @@
   - FAI estricto: 2 revisiones, Flight Director a bordo, GPS o salida fuera de norma → el juez valida o da re-salto.
   - Argentina (club y entrenamiento): 1 revisión, salidas con cronómetro y cámara, GPS y salida fuera de norma solo avisan.
   - Personalizado. La jornada muestra siempre en qué se aparta de FAI.
+- Pasada en el mapa (5.5.1, 5.5.4): es solo una ayuda para planificar los puntos y no puntúa. Marca una salida cada 600 m y un carril aproximado desde el centro de la pasada a cada punto; el carril que puntúa es el de 2.2, desde la posición del piloto al inicio de la validación.
+- Ranking público: cuentan solo las jornadas publicadas, de competencia o de entrenamiento, con la ventana FAI de 2500 a 1500 m. Cada salto se puntúa dentro de su jornada, con sus penalidades (5.10.1), y se compara el resultado (s, m o km/h), no el porcentaje. No cuentan los saltos anulados ni los que quedaron en cero.
+- Saltos sueltos (`/tracks`): se puntúan en el navegador con la ventana FAI y la elevación que se elija; no se guardan ni cuentan para el ranking.
 
 # Validación hecha
 - Copa del Mundo FAI 2025 (Skyderby, competencia 619): 333 de 333 saltos con el resultado oficial. Salida ±0,41 s.

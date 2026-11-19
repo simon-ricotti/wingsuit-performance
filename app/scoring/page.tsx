@@ -53,6 +53,8 @@ export default function ScoringPage() {
           <li><b>Varias penalidades en un salto:</b> se suman, con un máximo de 100 %. El reglamento no dice cómo combinarlas.</li>
           <li><b>Rotación de pasadas:</b> el reglamento pide rotarlas sin decir cómo; la plataforma corre una posición por tarea, tanto las pasadas como los pilotos dentro de cada una.</li>
           <li><b>Integrantes del equipo:</b> en Argentina el equipo es el club o el grupo que figura en el perfil de cada piloto, no la federación nacional.</li>
+          <li><b>Ranking:</b> cuentan las jornadas publicadas, de competencia o de entrenamiento, con la ventana FAI de 2500 a 1500 m. Cada salto se puntúa en su jornada, con sus penalidades, y se compara el resultado en segundos, metros o km/h. Los saltos anulados o en cero no cuentan.</li>
+          <li><b>Pasada en el mapa:</b> sirve para planificar los puntos de referencia y no puntúa. El carril que cuenta es el del reglamento: desde donde está el piloto al inicio de la validación hasta su punto.</li>
         </ul>
         <p className="sub small">El motor se validó contra la Copa del Mundo FAI 2025: los 333 saltos dan el mismo resultado que el oficial, y la penalidad de carril coincide en el nivel en 330.</p>
     </main>
