@@ -6,6 +6,7 @@ import * as engine from '@/lib/engine';
 import type { JumpRecord, PackedTrack, RefPoint, ScoreConfig, Task } from '@/lib/engine';
 import { TASK_UNIT } from '@/lib/jumps/score';
 import { fmt } from '@/lib/standings/views';
+import { SatMap, type MapTrack } from '@/app/ui/sat-map';
 
 export interface ReplayItem { jump: JumpRecord; packed: PackedTrack; name: string; color: string; ref: RefPoint | null }
 
@@ -31,6 +32,12 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
   const [plan, setPlan] = useState('race');
   const [speed, setSpeed] = useState(4);
   const [cam, setCam] = useState('auto');
+  const num = (v: unknown) => (typeof v === 'number' ? v : null);
+  // Each pilot's lane as the engine measures it: from the start of validation to their point (2.2, 5.6.2).
+  const mapTracks = useMemo<MapTrack[]>(() => items.map((it, i) => {
+    const tVal = num(it.jump.tVal), start = tVal != null ? engine.pointAtTime(pts[i], tVal) : null;
+    return { name: it.name, color: it.color, pts: pts[i], tTop: num(it.jump.tTop), tBot: num(it.jump.tBot), lane: start && it.ref ? { start, ref: it.ref } : null };
+  }).filter((t, i) => !off[items[i].jump.pilotId]), [items, pts, off]);
 
   // Rebuilds the replay when the pilots shown, the sync or the positions change (as the previous platform does).
   useEffect(() => {
@@ -115,6 +122,11 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
         <canvas id="cvProfile" aria-label="Perfil del vuelo" />
         <canvas id="cvPlan" aria-label="Vista desde arriba" />
       </div>
+      <h3>Sobre el terreno</h3>
+      <SatMap tracks={mapTracks} refs={[...new Map(items.filter((it) => it.ref).map((it) => [`${it.ref!.lat},${it.ref!.lon}`, it.ref!])).values()]} laneWidth={cfg.laneWidth} height={480} />
+      <p className="sub small">{items.some((it) => it.ref)
+        ? `Cada color es un piloto (la ventana, más gruesa). Franjas de su carril: ${cfg.laneWidth} m (celeste), −10 % (amarilla), −20 % (naranja) y −50 % (roja), FAI 5.6.2.`
+        : 'Sin puntos de referencia asignados no hay carriles para mostrar: se ven solo los tracks.'}</p>
     </div>
   );
 }

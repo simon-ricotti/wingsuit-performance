@@ -60,7 +60,8 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
   // Latest props for the Leaflet click handler (registered once).
   const latest = useRef({ refs, onRefsChange, onJumpRunChange, mode });
   latest.current = { refs, onRefsChange, onJumpRunChange, mode };
-  const editable = !!(onRefsChange || onJumpRunChange);
+  // Mode buttons and hints only where both can be edited (event settings); other pages explain their own tap.
+  const editable = !!(onRefsChange && onJumpRunChange);
 
   useEffect(() => {
     let off = false;
@@ -135,10 +136,10 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       {editable && (
         <div className="row">
           <div className="seg" role="group" aria-label="Qué marca un toque en el mapa">
-            {onRefsChange && <button type="button" aria-pressed={mode === 'ref'} onClick={() => setMode('ref')}>Agregar punto</button>}
-            {onJumpRunChange && <button type="button" aria-pressed={mode === 'run'} onClick={() => { setMode('run'); pendingA.current = null; }}>Marcar la pasada</button>}
+            <button type="button" aria-pressed={mode === 'ref'} onClick={() => setMode('ref')}>Agregar punto</button>
+            <button type="button" aria-pressed={mode === 'run'} onClick={() => { setMode('run'); pendingA.current = null; }}>Marcar la pasada</button>
           </div>
-          {onJumpRunChange && jumpRun && <button type="button" className="secondary" onClick={() => onJumpRunChange(null)}>Borrar la pasada</button>}
+          {jumpRun && <button type="button" className="secondary" onClick={() => onJumpRunChange!(null)}>Borrar la pasada</button>}
         </div>
       )}
       {editable && (
