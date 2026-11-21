@@ -54,12 +54,13 @@
   #clock.warn { background: var(--warn); color: #111; }
   #clock.go { background: var(--go); }
   #clock.late { background: var(--late); }
-  #label { display: flex; align-items: center; gap: 8px; font-size: clamp(1.6rem, 8vw, 3rem); font-weight: 900; }
+  #label { display: flex; align-items: center; gap: 8px; font-size: clamp(2.6rem, 13vw, 5rem); font-weight: 900; line-height: 1; }
   #label svg, .chips svg { width: 1.1em; height: 1.1em; flex: none; }
   #big { font-size: min(58vw, 46vh); font-weight: 900; line-height: .95; font-variant-numeric: tabular-nums; }
   .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; font-size: clamp(1.3rem, 6vw, 2rem); font-weight: 800; font-variant-numeric: tabular-nums; }
   .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.28); }
   .chips .off { opacity: .45; }
+  .chips .ok { box-shadow: inset 0 0 0 3px #3ddc84; } .chips .ok svg { color: #3ddc84; }
   .bar { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 10px; }
   .bar button { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; font-weight: 700; font-size: 1rem; }
 </style>
@@ -92,7 +93,7 @@
   <div class="tiles">
     <div class="tile" id="tPoint" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><b id="sbPoint"></b></div>
     <div class="tile" id="tGps" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg><b id="sbGps"></b></div>
-    <div class="tile" role="img" aria-label="Ground speed cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l20-8-7 9-3-3-4 5v-5z"/></svg><b id="sbGs"></b></div>
+    <div class="tile" id="tGs" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l20-8-7 9-3-3-4 5v-5z"/></svg><b id="sbGs"></b></div>
     <div class="tile" role="img" aria-label="Segundos entre salidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><b id="sbSecs"></b></div>
   </div>
   <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
@@ -231,7 +232,10 @@
     $('sbGps').textContent = gpsOn ? 'Sí' : 'No';
     $('tGps').className = 'tile ' + (gpsOn ? 'ok' : 'no');
     $('tGps').setAttribute('aria-label', 'GPS: ' + gpsText());
-    $('sbGs').textContent = cfg.gs + ' kt';
+    // Real ground speed (GPS, plane flying) in green; otherwise the typed one.
+    $('sbGs').textContent = kt(gs.v) + ' kt';
+    $('tGs').className = 'tile' + (gs.src === 'GPS' ? ' ok' : '');
+    $('tGs').setAttribute('aria-label', 'Ground speed ' + (gs.src === 'GPS' ? 'real (GPS)' : 'cargado'));
     $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
   }
 
@@ -285,15 +289,16 @@
     since: I('<path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4"/><path d="M12 8v4l3 2"/>'),
     pin: I('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
     tap: I('<path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v2M17 11a2 2 0 0 1 4 0v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4 14a2 2 0 0 1 3.3-2.2L9 14"/>'),
-    lock: I('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   };
-  const chip = (icon, text, label, off) => '<span' + (off ? ' class="off"' : '') + ' aria-label="' + label + '">' + ICON[icon] + (text || '') + '</span>';
+  // state: 'ok' (green: GPS on, point loaded, real ground speed), 'off' (dimmed) or nothing.
+  const chip = (icon, text, label, state) => '<span' + (state ? ' class="' + state + '"' : '') + ' aria-label="' + label + '">' + ICON[icon] + (text || '') + '</span>';
 
   function render() {
     if (!running) return;
     const now = Date.now(), gs = groundSpeed(), last = exits[exits.length - 1];
     const gpsOn = !!pos && !gpsErr && now - posAt < POS_FRESH;
-    const speed = chip('plane', kt(gs.v), 'Ground speed ' + kt(gs.v) + ' kt') + chip('gps', '', gpsOn ? 'GPS activo' : 'Sin GPS', !gpsOn);
+    const speed = chip('plane', kt(gs.v), 'Ground speed ' + kt(gs.v) + ' kt' + (gs.src === 'GPS' ? ' (GPS)' : ' (cargado)'), gs.src === 'GPS' ? 'ok' : '')
+      + chip('gps', '', gpsOn ? 'GPS activo' : 'Sin GPS', gpsOn ? 'ok' : 'off');
     ready = false;
     $('label').innerHTML = ICON.jumper + (exits.length + 1);
     let chips;
@@ -306,11 +311,11 @@
         const eta = d / gs.v;
         if (passed || eta <= 0.5) { ready = true; setState('go'); $('big').textContent = 'YA'; }
         else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); }
-        chips = chip('pin', Math.round(d) + ' m', 'Distancia al punto') + speed;
+        chips = chip('pin', Math.round(d) + ' m', 'Distancia al punto', 'ok') + speed;
       } else {
         ready = true;
         setState(''); $('big').textContent = '1ª';
-        chips = chip('pin', '', cfg.point ? 'Punto cargado' : 'Sin punto', !cfg.point) + speed;
+        chips = chip('pin', '', cfg.point ? 'Punto cargado' : 'Sin punto', cfg.point ? 'ok' : 'off') + speed;
       }
     } else {
       const since = (now - last.t) / 1000, left = last.target - since;
@@ -326,7 +331,7 @@
       }
       chips = chip('since', Math.floor(since) + ' s', 'Segundos desde la última salida (5.5.9)') + speed;
     }
-    $('chips').innerHTML = chips + chip(ready ? 'tap' : 'lock', '', ready ? 'Tocá la pantalla al salir' : 'Todavía no se puede tocar');
+    $('chips').innerHTML = chips + (ready ? chip('tap', '', 'Tocá la pantalla al salir') : '');
   }
 
 
