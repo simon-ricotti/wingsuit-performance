@@ -51,7 +51,7 @@
   #edit, .holdb { margin: 0; padding: 14px; font-size: 1rem; background-color: #2a2a2a; border: 1px solid #444; }
   /* Hold-to-confirm buttons: the bar fills up while pressed. */
   #edit, #stop, .holdb { background-image: linear-gradient(var(--brand), var(--brand)); background-repeat: no-repeat; background-position: left; background-size: 0% 100%; }
-  #edit.hold, #stop.hold, .holdb.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
+  #edit.hold, #stop.hold, .holdb.hold { background-size: 100% 100%; transition: background-size .75s linear; }
   /* Map picker (needs internet: Leaflet and the satellite tiles are loaded only when opened) */
   #picker { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); z-index: 10; }
   #pmap { flex: 1; }
@@ -59,24 +59,38 @@
   #picker .row .btn { margin: 0; }
   #pmsg { padding: 10px 12px 0; color: var(--muted); }
   /* Wind mode */
-  #wind { display: none; flex-direction: column; gap: 10px; max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+  #wind { display: none; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
           padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
   #wind h1 { font-size: 1.2rem; margin: 0; color: var(--muted); }
-  #wNow { display: flex; flex-wrap: wrap; gap: 8px; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hero { display: flex; align-items: center; gap: 16px; }
+  .rose { width: min(46vw, 34vh); height: auto; flex: none; }
+  .rose .ring { fill: none; stroke: #2a2a2a; stroke-width: 7; }
+  .rose .prog { fill: none; stroke: var(--brand); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50px 50px; transition: stroke-dashoffset .4s; }
+  .rose .tick { stroke: #555; stroke-width: 1.5; }
+  .rose text { fill: var(--muted); font: 800 9px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+  .rose .arrow { fill: #fff; stroke: #fff; stroke-width: 3.5; stroke-linecap: round; transition: transform .4s; transform-origin: 50px 50px; }
+  .rose.doubt .arrow { fill: var(--warn); stroke: var(--warn); }
+  .read { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-variant-numeric: tabular-nums; }
+  .read .from { font-size: clamp(2.6rem, 13vw, 4rem); font-weight: 900; line-height: 1; }
+  .read .kt { font-size: clamp(2rem, 10vw, 3rem); font-weight: 900; line-height: 1.05; }
+  .read .alt { font-size: 1.1rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .read .lab { font-size: .85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .read .hint { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
+  .read.doubt .from, .read.doubt .kt { color: var(--warn); }
+  #wNow { display: flex; flex-wrap: wrap; gap: 8px; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
   #wNow span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #1e1e1e; }
   #wNow svg { width: 1.1em; height: 1.1em; }
   #wNow .off { opacity: .45; }
-  .turn { height: 14px; border-radius: 7px; background: #2a2a2a; overflow: hidden; }
-  .turn i { display: block; height: 100%; width: 0; background: var(--brand); }
+  #wNow .ok { box-shadow: inset 0 0 0 2px #3ddc84; } #wNow .ok svg { color: #3ddc84; }
   #wList { flex: 1; overflow: auto; }
-  #wList table { width: 100%; border-collapse: collapse; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
-  #wList th { font-size: .85rem; color: var(--muted); text-align: right; font-weight: 600; padding: 4px 6px; }
-  #wList td { text-align: right; font-weight: 800; padding: 8px 6px; border-top: 1px solid #333; }
+  #wList table { width: 100%; border-collapse: collapse; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  #wList th { font-size: .8rem; color: var(--muted); text-align: right; font-weight: 600; padding: 4px 6px; }
+  #wList td { text-align: right; font-weight: 800; padding: 9px 6px; border-top: 1px solid #333; }
   #wList th:first-child, #wList td:first-child { text-align: left; }
   #wList tr.doubt td { color: var(--warn); }
-  #wList .arrow { display: inline-block; }
+  #wList .mini { width: 1em; height: 1em; vertical-align: -.12em; margin-right: 4px; }
   .wbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .wbtns .btn { margin: 0; padding: 12px; font-size: .95rem; }
+  .wbtns .btn { margin: 0; padding: 14px; font-size: .95rem; }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -148,16 +162,24 @@
 </main>
 
 <main id="wind">
-  <h1>Viento · hacé un 360 a airspeed constante</h1>
-  <div id="wNow"></div>
-  <div class="turn" aria-hidden="true"><i id="wTurn"></i></div>
-  <div id="wList"></div>
-  <p class="note" id="wNote">Cada 360 completo agrega una fila: altura GPS (ft sobre el mar), de dónde viene el viento y su intensidad. En amarillo, una medición dudosa (el airspeed cambió o el giro fue irregular).</p>
-  <div class="wbtns">
-    <button class="btn secondary" id="wDl" type="button">Descargar lecturas</button>
-    <button class="btn holdb" id="wClear" type="button">Mantené para borrar</button>
+  <h1>Viento</h1>
+  <div class="hero">
+    <svg class="rose" id="wRose" viewBox="0 0 100 100" role="img" aria-label="Viento">
+      <circle class="ring" cx="50" cy="50" r="44"/>
+      <circle class="prog" id="wProg" cx="50" cy="50" r="44" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
+      <g id="wTicks"></g>
+      <text x="50" y="16">N</text><text x="84" y="50">E</text><text x="50" y="84">S</text><text x="16" y="50">O</text>
+      <!-- Arrow from where the wind comes (rim, rotated) to the centre and across. -->
+      <g class="arrow" id="wArrow" style="display:none"><line x1="50" y1="25" x2="50" y2="70"/><path d="M41 62 L50 80 L59 62 Z"/></g>
+    </svg>
+    <div class="read" id="wRead"></div>
   </div>
-  <button class="btn holdb" id="wBack" type="button">Mantené para volver</button>
+  <div id="wNow"></div>
+  <div id="wList"></div>
+  <div class="wbtns">
+    <button class="btn holdb" id="wClear" type="button">Mantené para borrar</button>
+    <button class="btn holdb" id="wBack" type="button">Mantené para volver</button>
+  </div>
 </main>
 
 <section id="picker" aria-label="Elegir el punto en el mapa">
@@ -262,10 +284,9 @@
   // ---- Wind by circling ----
   // In a 360 at constant airspeed the ground velocity vector draws a circle: its centre is the wind and its radius the
   // true airspeed. Detect a full turn from the GPS track, fit a circle (least squares) to the velocities of that turn.
-  const WIND_RAW = 'wsp:wind-raw', WIND_RES = 'wsp:winds';
-  const raw = read(WIND_RAW) || [];       // GPS readings of the climb, to check the method later
+  const WIND_RES = 'wsp:winds';
   const winds = read(WIND_RES) || [];     // measured winds, newest last
-  let turnS = [], turnAcc = 0, wPrev = null, rawSaved = 0;
+  let turnS = [], turnAcc = 0, wPrev = null, altNow = null;
   const MIN_FLY = 20;                     // m/s (~40 kt): below that, the plane is not flying
   const MAX_TURN_S = 150;                 // a 360 slower than this is not taken
 
@@ -281,9 +302,7 @@
     wPrev = { p: here, t: now };
     if (vx == null) return;
     const alt = c.altitude != null && isFinite(c.altitude) ? c.altitude : null;
-    raw.push([now, +here.lat.toFixed(6), +here.lon.toFixed(6), alt == null ? null : Math.round(alt), +vx.toFixed(2), +vy.toFixed(2)]);
-    if (raw.length > 6000) raw.splice(0, raw.length - 6000);
-    if (now - rawSaved > 10000) { write(WIND_RAW, raw); rawSaved = now; }
+    altNow = alt;
 
     const sp = Math.hypot(vx, vy);
     if (sp < MIN_FLY) { turnS = []; turnAcc = 0; return; }
@@ -329,24 +348,45 @@
       kt: Math.round(Math.hypot(cx, cy) / KT), tas: Math.round(r / KT), rms: +(rms / KT).toFixed(1),
       ok: rms < 1.5,
     });
-    write(WIND_RES, winds); write(WIND_RAW, raw);
+    write(WIND_RES, winds);
   }
 
   const ft = (m) => Math.round(m / 0.3048 / 50) * 50;
+  const ftTxt = (m) => ft(m).toLocaleString('es-AR');
+  const altTxt = (w) => w.altMin == null ? '' : ftTxt(w.altMin) + (ft(w.altMax) - ft(w.altMin) >= 200 ? '–' + ftTxt(w.altMax) : '') + ' ft';
+  const deg3 = (d) => String(d).padStart(3, '0') + '°';
+  // Small arrow for the table: points where the wind goes, like the big one.
+  const mini = (from) => '<svg class="mini" viewBox="0 0 24 24" style="transform: rotate(' + from + 'deg)"><path d="M12 22 L5 9 H10 V2 H14 V9 H19 Z" fill="currentColor"/></svg>';
+  let ticksDone = false;
+
   function renderWind() {
+    if (!ticksDone) {
+      let t = '';
+      for (let a = 0; a < 360; a += 30) { const r = a * Math.PI / 180; t += '<line class="tick" x1="' + (50 + 38 * Math.sin(r)) + '" y1="' + (50 - 38 * Math.cos(r)) + '" x2="' + (50 + 41 * Math.sin(r)) + '" y2="' + (50 - 41 * Math.cos(r)) + '"/>'; }
+      $('wTicks').innerHTML = t; ticksDone = true;
+    }
     const gpsOn = !!pos && !gpsErr && Date.now() - posAt < POS_FRESH, real = realSpeed();
-    const last = raw[raw.length - 1];
+    // Turn progress around the rose.
+    $('wProg').setAttribute('stroke-dashoffset', String(276.5 * (1 - Math.min(1, Math.abs(turnAcc) / 360))));
+    const w = winds[winds.length - 1];
+    if (w) {
+      $('wArrow').style.display = ''; $('wArrow').style.transform = 'rotate(' + w.from + 'deg)';
+      $('wRose').classList.toggle('doubt', !w.ok);
+      $('wRose').setAttribute('aria-label', 'Viento de ' + w.from + ' grados a ' + w.kt + ' nudos');
+      $('wRead').className = 'read' + (w.ok ? '' : ' doubt');
+      $('wRead').innerHTML = '<span class="lab">Viene de</span><span class="from">' + deg3(w.from) + '</span><span class="kt">' + w.kt + ' kt</span><span class="alt">' + altTxt(w) + '</span>';
+    } else {
+      $('wArrow').style.display = 'none';
+      $('wRead').className = 'read';
+      $('wRead').innerHTML = '<span class="hint">Hacé un 360 a airspeed constante. El anillo se llena con el giro.</span>';
+    }
     $('wNow').innerHTML =
-      '<span class="' + (gpsOn ? '' : 'off') + '">' + ICON.gps + (gpsOn ? 'GPS' : 'Sin GPS') + '</span>'
-      + '<span>' + ICON.plane + (real != null ? kt(real) + ' kt' : '–') + '</span>'
-      + '<span>' + (last && last[3] != null ? ft(last[3]).toLocaleString('es-AR') + ' ft' : '– ft') + '</span>'
+      '<span class="' + (gpsOn ? 'ok' : 'off') + '">' + ICON.gps + '</span>'
+      + '<span class="' + (real != null ? 'ok' : '') + '">' + ICON.plane + (real != null ? kt(real) : '–') + '</span>'
+      + '<span>' + (altNow != null ? ftTxt(altNow) + ' ft' : '– ft') + '</span>'
       + '<span>↻ ' + Math.min(360, Math.round(Math.abs(turnAcc))) + '°</span>';
-    $('wTurn').style.width = Math.min(100, Math.abs(turnAcc) / 3.6) + '%';
-    if (!winds.length) { $('wList').innerHTML = '<p class="note">Todavía no hay mediciones.</p>'; return; }
-    $('wList').innerHTML = '<table><thead><tr><th>Altura (ft)</th><th>Viene de</th><th>kt</th><th>TAS</th></tr></thead><tbody>'
-      + winds.slice().reverse().map((w) => '<tr class="' + (w.ok ? '' : 'doubt') + '"><td>'
-        + (w.altMin == null ? '–' : ft(w.altMin).toLocaleString('es-AR') + (ft(w.altMax) - ft(w.altMin) >= 200 ? '–' + ft(w.altMax).toLocaleString('es-AR') : ''))
-        + '</td><td><span class="arrow" style="transform: rotate(' + (w.from + 180) + 'deg)">↑</span> ' + String(w.from).padStart(3, '0') + '°</td><td>' + w.kt + '</td><td>' + w.tas + '</td></tr>').join('')
+    $('wList').innerHTML = winds.length < 2 ? '' : '<table><thead><tr><th>Altura</th><th>Viene de</th><th>kt</th></tr></thead><tbody>'
+      + winds.slice(0, -1).reverse().map((x) => '<tr class="' + (x.ok ? '' : 'doubt') + '"><td>' + altTxt(x) + '</td><td>' + mini(x.from) + deg3(x.from) + '</td><td>' + x.kt + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
@@ -455,14 +495,14 @@
     $('tSecs').className = 'tile' + (gs.src === 'GPS' ? ' ok' : '');
   }
 
-  // Exceptional actions (end the jump run, change the setup): hold the button 1.5 s while the bar fills up.
+  // Exceptional actions (end the jump run, change the setup): hold the button 0.75 s while the bar fills up.
   function holdButton(el, action) {
     let t = null;
     const end = () => { clearTimeout(t); el.classList.remove('hold'); };
     el.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       el.classList.add('hold');
-      t = setTimeout(() => { end(); action(); }, 1500);
+      t = setTimeout(() => { end(); action(); }, 750);
     });
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, end);
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -475,17 +515,8 @@
   holdButton($('edit'), () => { clearInterval(timer); show('setup'); });
   holdButton($('toWind'), () => { startGps(); clearInterval(timer); show('wind'); timer = setInterval(renderWind, 1000); renderWind(); });
   holdButton($('wBack'), () => { clearInterval(timer); show('standby'); timer = setInterval(renderStandby, 500); renderStandby(); });
-  holdButton($('wClear'), () => { winds.length = 0; raw.length = 0; turnS = []; turnAcc = 0; write(WIND_RES, winds); write(WIND_RAW, raw); renderWind(); });
-  // Raw readings and results as CSV, to compare with the manual method.
-  $('wDl').onclick = () => {
-    const rows = ['time,lat,lon,alt_m,vx_ms,vy_ms'].concat(raw.map((r) => [new Date(r[0]).toISOString()].concat(r.slice(1)).join(',')));
-    rows.push('', 'time,alt_min_m,alt_max_m,from_deg,wind_kt,tas_kt,rms_kt,ok');
-    for (const w of winds) rows.push([new Date(w.t).toISOString(), w.altMin, w.altMax, w.from, w.kt, w.tas, w.rms, w.ok].join(','));
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
-    a.download = 'viento-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-  };
+  holdButton($('wClear'), () => { winds.length = 0; turnS = []; turnAcc = 0; write(WIND_RES, winds); renderWind(); });
+
   $('run').onclick = () => {
     exits = []; minDist = Infinity; passed = false; running = true; buzzed = false; ready = false;
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
