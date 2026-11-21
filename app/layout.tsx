@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/results">Resultados</Link>
               <Link href="/ranking">Ranking</Link>
               <Link href="/tracks">Tracks</Link>
+              <Link href="/jump-run">Pasada</Link>
               <Link href="/scoring">Reglamento</Link>
               <Link href="/help">Ayuda</Link>
               <Link href="/admin">Mi panel</Link>

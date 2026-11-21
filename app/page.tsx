@@ -53,6 +53,7 @@ export default async function Home() {
       <ul className="menu home-links">
         {!last && <li><Link href="/results">Resultados<span className="small muted">Las jornadas publicadas, con su clasificación.</span></Link></li>}
         <li><Link href="/tracks">Ver mis tracks<span className="small muted">Subí tu GPS y mirá el vuelo, las métricas y el replay.</span></Link></li>
+        <li><Link href="/jump-run">Calcular la pasada<span className="small muted">Con el viento de hoy, sobre el satélite, y los segundos entre salidas.</span></Link></li>
         <li><Link href="/scoring">Reglamento<span className="small muted">Cómo se puntúa y las reglas para jueces.</span></Link></li>
         <li><Link href="/help">Ayuda<span className="small muted">Cómo usar la plataforma: organizador, juez y piloto.</span></Link></li>
       </ul>

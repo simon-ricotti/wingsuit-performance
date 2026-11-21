@@ -1,9 +1,12 @@
 'use client';
-import { useActionState, useMemo, useRef, useState } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { saveEvent } from './actions';
 import { DOOR_LABELS, JUDGING_PROFILES, metresToFeet, parseRefs, toMetres, type EventFormValues, type Judging } from '@/lib/events/settings';
 import type { RefPoint } from '@/lib/engine';
 import { SatMap } from '@/app/ui/sat-map';
+import { PLAN_KEY } from '@/app/jump-run/planner';
+import type { JumpRun } from '@/lib/data/rows';
 import type { FormState } from '@/lib/admin/write';
 
 const ALT_FIELDS = ['elev', 'top', 'bottom', 'exitMin', 'exitMax'] as const;
@@ -20,6 +23,10 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
   const mapRefs = useMemo(() => { try { lastRefs.current = parseRefs(refsText); } catch { /* keep last */ } return lastRefs.current; }, [refsText]);
   const fromMap = (r: RefPoint[]) => setRefsText(r.map((x) => `${x.name}, ${x.lat}, ${x.lon}`).join('\n'));
   const u = units === 'ft' ? 'ft' : 'm';
+  // The last plan from /jump-run in this browser, if any.
+  const [fit, setFit] = useState(0); // reframe the map after bringing the plan in
+  const [plan, setPlan] = useState<{ jumpRun: JumpRun | null; refs: RefPoint[] } | null>(null);
+  useEffect(() => { try { const p = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null'); if (p?.jumpRun) setPlan(p); } catch { /* none */ } }, []);
 
   // Switching units converts the typed altitudes, as the previous platform does.
   function changeUnits(next: 'm' | 'ft') {
@@ -89,7 +96,12 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
         <textarea name="refs" rows={3} value={refsText} onChange={(e) => setRefsText(e.target.value)} placeholder="Norte, -33.0124, -60.6400" />
       </label>
       <input type="hidden" name="jumpRun" value={jumpRun ? [jumpRun.a.lat, jumpRun.a.lon, jumpRun.b.lat, jumpRun.b.lon].join(',') : ''} />
-      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={600} />
+      <div className="row">
+        {plan && <button type="button" className="secondary" onClick={() => { setJumpRun(plan.jumpRun); setFit((f) => f + 1); }}>Usar la pasada del planificador</button>}
+        {plan && plan.refs.length > 0 && <button type="button" className="secondary" onClick={() => { fromMap(plan.refs); setFit((f) => f + 1); }}>Usar sus {plan.refs.length} puntos</button>}
+        <Link href="/jump-run" className="small">Calcular la pasada con el viento</Link>
+      </div>
+      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={600} fitKey={String(fit)} />
       <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de 600 m desde el centro de la pasada a cada punto; el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento
         FAI 2026. La unidad elegida se usa para cargar y mostrar las alturas de esta jornada; los resultados siguen en segundos, metros y km/h.</p>

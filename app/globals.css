@@ -203,6 +203,7 @@ a, button, select { touch-action: manipulation; }
 /* Satellite map: its own stacking context so Leaflet panes stay under the sticky app bar. */
 .satmap { isolation: isolate; border-radius: 12px; border: 1px solid var(--line); background: #1b1b1b; }
 .refpin { background: #fff; border: 3px solid #701968; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
+.landpin { border-color: #ff7a3d; border-radius: 3px; }
 .satmap .leaflet-tooltip { font: 700 12px/1.3 var(--font-body); }
 .row .seg { margin-bottom: 0; }
 .records .kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }

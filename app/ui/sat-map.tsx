@@ -19,10 +19,15 @@ interface Props {
   refs?: RefPoint[]; onRefsChange?: (r: RefPoint[]) => void;
   jumpRun?: JumpRun | null; onJumpRunChange?: (j: JumpRun | null) => void;
   tracks?: MapTrack[]; laneWidth?: number; height?: number;
+  /** Landing area (jump run planner): a draggable pin when onLandingChange is given. */
+  landing?: LatLon | null; onLandingChange?: (p: LatLon) => void;
+  /** Metres between exit marks on the jump run (5.5.4: at least 600). */
+  exitGap?: number;
+  /** Reframe the map when this changes (besides the tracks). */
+  fitKey?: string;
 }
 
 const AVA: [number, number] = [-33.06, -60.62]; // Alvear, Santa Fe: only the initial view when there is nothing to show
-const EXIT_GAP = 600; // 5.5.4: at least 600 m horizontal separation between exits
 const BANDS: [number, number, string][] = [[0, 0, '#3fc1c9'], [0, 150, '#f0b354'], [150, 300, '#ff7a3d'], [300, 380, '#ff5252']]; // 5.6.2
 
 /** Corridor polygons beside the line a→b: lane (0..half) and the 5.6.2 penalty bands outside it. */
@@ -39,16 +44,16 @@ function corridor(a: LatLon, b: LatLon, half: number, withBands: boolean): { pol
   return out;
 }
 
-/** Points every EXIT_GAP metres along the jump run. */
-function exitSlots(j: JumpRun): [number, number][] {
+/** Points every `gap` metres along the jump run. */
+function exitSlots(j: JumpRun, gap: number): [number, number][] {
   const pr = projector(j.a.lat, j.a.lon), k = pr(j.a.lat + 1, j.a.lon + 1), r = pr(j.b.lat, j.b.lon), L = Math.hypot(r[0], r[1]);
-  const n = Math.min(40, Math.floor(L / EXIT_GAP));
-  return Array.from({ length: n + 1 }, (_, i) => [j.a.lat + (r[1] * i * EXIT_GAP / L) / k[1], j.a.lon + (r[0] * i * EXIT_GAP / L) / k[0]]);
+  const n = Math.min(40, Math.floor(L / gap + 1e-6));
+  return Array.from({ length: n + 1 }, (_, i) => [j.a.lat + (r[1] * i * gap / L) / k[1], j.a.lon + (r[0] * i * gap / L) / k[0]]);
 }
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 
-export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChange, tracks = [], laneWidth = 600, height = 420 }: Props) {
+export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChange, tracks = [], laneWidth = 600, height = 420, landing = null, onLandingChange, exitGap = 600, fitKey = '' }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const L = useRef<typeof Leaflet | null>(null);
   const map = useRef<Leaflet.Map | null>(null);
@@ -110,7 +115,8 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       const mid = { lat: (jumpRun.a.lat + jumpRun.b.lat) / 2, lon: (jumpRun.a.lon + jumpRun.b.lon) / 2 };
       for (const r of refs) for (const c of corridor(mid, r, half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
       Lf.polyline([[jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]], { color: '#fff', weight: 3, dashArray: '8 6' }).addTo(g).bindTooltip('Pasada');
-      for (const s of exitSlots(jumpRun)) Lf.circleMarker(s, { radius: 5, color: '#701968', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g).bindTooltip('Salida cada 600 m (5.5.4)');
+      exitSlots(jumpRun, exitGap).forEach((s, i) => Lf.circleMarker(s, { radius: 5, color: '#701968', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g).bindTooltip(`Salida ${i + 1} (cada ${exitGap} m, 5.5.4)`));
+      if (landing) Lf.polyline([[mid.lat, mid.lon], [landing.lat, landing.lon]], { color: '#fff', weight: 1, opacity: 0.8, dashArray: '2 6', interactive: false }).addTo(g);
       bounds.push([jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]);
     }
 
@@ -125,11 +131,18 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       bounds.push([r.lat, r.lon]);
     });
 
+    if (landing) {
+      const mk = Lf.marker([landing.lat, landing.lon], { icon: Lf.divIcon({ className: 'refpin landpin', iconSize: [18, 18] }), draggable: !!onLandingChange, title: 'Aterrizaje', keyboard: true }).addTo(g);
+      mk.bindTooltip('Aterrizaje', { permanent: true, direction: 'right', offset: [10, -14] });
+      if (onLandingChange) mk.on('dragend', () => { const p = mk.getLatLng(); onLandingChange({ lat: round6(p.lat), lon: round6(p.lng) }); });
+      bounds.push([landing.lat, landing.lon]);
+    }
+
     // Frame what there is when the map opens or the tracks change, not while the user edits points.
-    const key = tracks.map((t) => t.name).join('|');
+    const key = tracks.map((t) => t.name).join('|') + '#' + fitKey;
     if (fitted.current !== key && bounds.length) m.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
     fitted.current = key;
-  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange]);
+  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange, landing, onLandingChange, exitGap, fitKey]);
 
   return (
     <div className="stack">

@@ -6,13 +6,14 @@ Idioma de la interfaz: español rioplatense, coma decimal, unidades m o ft confi
 
 Idioma del código: **inglés** (identificadores, comentarios, nombres de archivo, rutas/URLs, tablas, roles, buckets, tests). En castellano solo los textos que ve el usuario. `legacy/` queda como está (es la referencia). Los documentos de `docs/` están escritos en castellano, con nombres de archivo en inglés.
 
-## Estado actual y cómo seguir (actualizado: 18 nov 2026)
+## Estado actual y cómo seguir (actualizado: 21 nov 2026)
 - **Las 7 etapas están hechas** y en `main`, publicadas en Vercel (la URL de producción está en el proyecto de Vercel). Lo que sigue es la **prueba general** del organizador con jueces y pilotos reales, y corregir lo que aparezca.
 - **Hecho el 18 nov 2026 (después de las etapas):**
   - Cara nueva: paleta bordó de Saltá en Rosario (`--brand`; el naranja `--accent` queda solo para datos: ventana en los gráficos y mejor de la ronda), barra superior fija, botones, menús en tarjetas, League Spartan + Lato con `next/font`. Ícono provisorio (silueta de wingsuit); **el nombre de la app sigue sin definir** (propuestas: Carril, Planeo, Ventana, Pampa/Paraná Performance).
   - Mapa satelital (`app/ui/sat-map.tsx`, Leaflet 1.9.4 + Esri World Imagery): puntos de referencia y pasada en los ajustes de la jornada, track con carril y franjas en el detalle del salto y en el replay.
   - `/tracks`: saltos sueltos sin jornada, todo en el navegador (mapa, métricas, replay); no guarda.
   - `/ranking`: público, récords y mejor marca por tarea de las jornadas publicadas (componente compartido con `/admin/ranking`).
+  - **21 nov 2026:** inicio con la última competencia y los récords; menú Reglamento con pestañas (Cómo se puntúa / Para jueces); `/jump-run` ("Calcular la pasada"): pasada perpendicular al viento con pronóstico de Open-Meteo, segundos entre salidas y aterrizaje sobre el satélite, todo en el navegador; los ajustes de la jornada la traen con «Usar la pasada del planificador» (vía `localStorage`).
   - `update-jump-run.sql` (columna `events.jump_run`) aplicado el 19 nov 2026.
   - **Datos de demo cargados y publicados (19 nov 2026):** "Demo: Copa AVA 2026, fecha 1" (`edemoava2026`, 2 rondas, 36 saltos) y "Demo: entrenamiento AVA" (`edemoentreno`, 6 saltos), con los pilotos `pdemo01` a `pdemo06`. Son tracks sintéticos sobre AVA, puntuados con el motor. Están en `.demo/` (excluido de git): las copias para `/admin/import`, el generador (`npx tsx .demo/generate.mts .demo`, se corre desde la raíz) y `delete-demo.sql`, que los borra sin dejar rastro (también del archivo y del historial). Ese script se probó con PGlite. Desde la app no se puede borrar una jornada con saltos.
   - Pendiente de probar con datos reales: el carril sobre el satélite con tracks de AVA y puntos cargados (con los fixtures de Skyderby solo se probó en `/tracks`), y la barra en el ancho del celular.
@@ -45,7 +46,7 @@ Idioma del código: **inglés** (identificadores, comentarios, nombres de archiv
   - `app/admin/...`: pantallas de jueces y organizador.
   - `app/account`: el piloto.
   - `app/results`: el público.
-  - `app/ranking`: ranking público (tablas compartidas con `/admin/ranking`); `app/tracks`: saltos sueltos en el navegador; `app/ui/sat-map.tsx`: mapa satelital.
+  - `app/ranking`: ranking público (tablas compartidas con `/admin/ranking`); `app/tracks`: saltos sueltos en el navegador; `app/ui/sat-map.tsx`: mapa satelital; `app/jump-run`: calcular la pasada.
   - `app/scoring`: "Cómo se puntúa".
   - `app/help`: ayuda por rol para jueces, organizadores y pilotos. Actualizarla cuando cambie un flujo o el texto de un botón.
   - `app/judging`: reglamento FAI para jueces (fuente: `docs/fai-2026-rules-summary.md`), con recuadros “En el sistema”. Actualizarla si cambia el reglamento o cómo lo aplica el sistema.

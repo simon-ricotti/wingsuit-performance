@@ -33,7 +33,7 @@ export default function HelpPage() {
             <li><b>Elevación del DZ</b> sobre el nivel del mar: obligatoria y clave, define la altura de la ventana. AVA: 26 m.</li>
             <li>Ventana y salida: dejá los valores FAI salvo que haya un motivo.</li>
             <li><b>Carril:</b> cargá los puntos de referencia en el mapa satelital (<i>Agregar punto</i> y tocá el terreno; arrastralos para moverlos) o escribilos, uno por línea: <code>Norte, -33.0124, -60.6400</code>. Sin puntos, el carril no se evalúa.</li>
-            <li><b>Pasada:</b> con <i>Marcar la pasada</i> tocá dónde empieza y dónde termina. El mapa marca una salida cada 600 m (FAI 5.5.4) y un carril aproximado hacia cada punto, para ver si los puntos quedan bien ubicados. Es solo para planificar: no cambia el puntaje.</li>
+            <li><b>Pasada:</b> con <i>Marcar la pasada</i> tocá dónde empieza y dónde termina. El mapa marca una salida cada 600 m (FAI 5.5.4) y un carril aproximado hacia cada punto, para ver si los puntos quedan bien ubicados. Para calcularla con el viento, usá <Link href="/jump-run">Calcular la pasada</Link> (perpendicular al viento y a barlovento, con los segundos entre salidas) y después <i>Usar la pasada del planificador</i> en los ajustes. Es solo para planificar: no cambia el puntaje.</li>
             <li><b>Perfil de juzgamiento:</b> <i>FAI estricto</i> (dos firmas de jueces distintos, re-salto por GPS o salida fuera de norma) o <i>Argentina</i> (una firma, esos casos solo se marcan).</li>
             <li><b>Carga de saltos por los pilotos:</b> activalo solo si querés que cada piloto suba los suyos; si no, los cargan los jueces.</li>
           </ul>
