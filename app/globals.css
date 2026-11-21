@@ -211,3 +211,16 @@ a, button, select { touch-action: manipulation; }
 .appbar nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; white-space: nowrap; min-width: 0; }
 .ranking-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 24px; }
 .standings td.ev { white-space: normal; min-width: 8rem; }
+/* Home */
+.home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-bottom: 24px; }
+.home-grid h2 { margin: 0; }
+.home-grid .sub { margin: 2px 0 0; }
+.home-grid .button { align-self: flex-start; }
+.podium { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.podium li { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.podium li > span:first-child { flex: 1; }
+.podium li b { font-family: var(--font-display); font-size: 1.15rem; }
+ol.podium { counter-reset: pos; }
+ol.podium li::before { counter-increment: pos; content: counter(pos); font-weight: 700; color: var(--muted); min-width: 1.2em; }
+.home-links a { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; }
+.home-links a .small { font-family: var(--font-body); font-weight: 400; }

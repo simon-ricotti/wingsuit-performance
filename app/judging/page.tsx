@@ -3,6 +3,7 @@
 // Public and static (CDN).
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { RulesTabs } from '../scoring/rules-tabs';
 import { JumpFlow, JumpProfile, LaneFromAbove, PassRotation, ScoringSteps } from './figures';
 
 export const metadata = { title: 'Reglamento para jueces · Wingsuit Performance', description: 'Lo que hay que saber del reglamento FAI 2026 de Wingsuit Performance para juzgar, con los artículos y cómo apoyarse en el sistema.' };
@@ -12,11 +13,20 @@ const InSystem = ({ children }: { children: ReactNode }) => <p className="note s
 export default function JudgingPage() {
   return (
     <main className="rules help">
-      <p><Link className="back" href="/">← Inicio</Link> · <Link href="/help">Ayuda</Link> · <Link href="/scoring">Cómo se puntúa</Link></p>
+      <RulesTabs current="judging" />
       <h1>Reglamento para jueces</h1>
       <p>Lo que hay que saber para juzgar una competencia de Wingsuit Performance según las <b>Reglas de Competencia de Wingsuit Flying de la FAI, edición 2026</b>. Entre paréntesis va el artículo. Es un resumen: ante cualquier duda vale el <a href="https://www.dfv.aero/downloads/2026_ISC_CR_WS.pdf">texto oficial de la FAI</a>.</p>
       <nav aria-label="Secciones" className="row small">
-        <a href="#disciplina">La disciplina</a> · <a href="#definiciones">Definiciones</a> · <a href="#equipo">Equipo</a> · <a href="#salto">Salto y salida</a> · <a href="#penalidades">Penalidades</a> · <a href="#resaltos">Re-saltos y ceros</a> · <a href="#puntaje">Puntaje</a> · <a href="#jueces">Jueces</a> · <a href="#control">Juez y sistema</a> · <a href="#ava">En AVA</a>
+        <a href="#disciplina">La disciplina</a>
+        <a href="#definiciones">Definiciones</a>
+        <a href="#equipo">Equipo</a>
+        <a href="#salto">Salto y salida</a>
+        <a href="#penalidades">Penalidades</a>
+        <a href="#resaltos">Re-saltos y ceros</a>
+        <a href="#puntaje">Puntaje</a>
+        <a href="#jueces">Jueces</a>
+        <a href="#control">Juez y sistema</a>
+        <a href="#ava">En AVA</a>
       </nav>
 
       <h2 id="disciplina">La disciplina</h2>

@@ -1,12 +1,12 @@
 // "Cómo se puntúa": public and static (served from the CDN), same text as the previous platform.
-import Link from 'next/link';
+import { RulesTabs } from './rules-tabs';
 
 export const metadata = { title: 'Cómo se puntúa · Wingsuit Performance', description: 'Reglas de puntaje FAI 2026 de Wingsuit Performance y decisiones donde el reglamento no define algo.' };
 
 export default function ScoringPage() {
   return (
     <main className="rules">
-      <p><Link className="back" href="/">← Inicio</Link></p>
+      <RulesTabs current="scoring" />
       <h1>Cómo se puntúa</h1>
       <p>El cálculo sigue las Reglas de Competencia de Wingsuit Flying de la FAI (ISC), edición 2026, evento Performance. Entre paréntesis va el artículo.</p>
         <h2>El salto</h2>

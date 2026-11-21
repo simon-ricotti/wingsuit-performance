@@ -19,15 +19,20 @@ export function marksOf(results: { ev: Ev; jumps: JumpRecord[] }[]): Mark[] {
   return results.flatMap((r) => r.jumps.filter((j) => j.ok && !j.void && (j._pen ?? 0) < 100 && (j._result ?? 0) > 0).map((j) => ({ j, ev: r.ev })));
 }
 
-const kind = (ev: Ev) => (ev.mode === 'competition' ? 'Competencia' : 'Entrenamiento');
-
-export function RankingTables({ marks, name, href }: { marks: Mark[]; name: (pid: string) => string; href: (evId: string) => string }) {
-  if (!marks.length) return <p className="sub">Todavía no hay saltos que cuenten para el ranking.</p>;
-  const best = TASKS.map((t) => {
+/** Each pilot's best mark per task, best first (the first one is the record). */
+export function bestByTask(marks: Mark[]) {
+  return TASKS.map((t) => {
     const byPilot = new Map<string, Mark>();
     for (const m of marks) if (m.j.task === t && (!byPilot.has(m.j.pilotId) || m.j._result! > byPilot.get(m.j.pilotId)!.j._result!)) byPilot.set(m.j.pilotId, m);
     return { t, rows: [...byPilot.values()].sort((a, b) => b.j._result! - a.j._result!) };
   });
+}
+
+const kind = (ev: Ev) => (ev.mode === 'competition' ? 'Competencia' : 'Entrenamiento');
+
+export function RankingTables({ marks, name, href }: { marks: Mark[]; name: (pid: string) => string; href: (evId: string) => string }) {
+  if (!marks.length) return <p className="sub">Todavía no hay saltos que cuenten para el ranking.</p>;
+  const best = bestByTask(marks);
   const where = (m: Mark) => <><Link href={href(m.ev.id)}>{m.ev.name}</Link>{m.ev.date ? <span className="muted"> {m.ev.date}</span> : null}</>;
 
   return (
