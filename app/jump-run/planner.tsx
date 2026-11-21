@@ -29,6 +29,7 @@ export function Planner() {
   const [hours, setHours] = useState<Hour[] | null>(null);
   const [wx, setWx] = useState<'idle' | 'loading' | 'error'>('idle');
   const [loaded, setLoaded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const set = (k: keyof Inputs, v: string) => setInp((x) => ({ ...x, [k]: v }));
 
   // Per-viewer convenience: restore the last plan (may be unavailable in private windows).
@@ -148,6 +149,15 @@ export function Planner() {
           <div className="kpi main"><span className="small muted">Rumbo de la pasada</span><span className="v">{deg(plan.heading)}</span><span className="small muted">perpendicular al viento (5.5.1)</span></div>
           <div className="kpi main"><span className="small muted">Entre salidas</span><span className="v">{plan.secs} s</span><span className="small muted">a {Math.round(plan.gs / KT)} kt sobre el suelo, {plan.gap} m (5.5.4)</span></div>
           <div className="kpi main"><span className="small muted">Largo de la pasada</span><span className="v">{(plan.length / 1000).toFixed(1).replace('.', ',')} km</span><span className="small muted">centro a {inp.upwind} m a barlovento</span></div>
+        </div>
+      )}
+      {plan.run && (
+        <div className="row">
+          {/* The installed clock (iPhone) does not share this browser's storage: the point goes by copy and paste. */}
+          <button type="button" className="secondary" onClick={() => {
+            navigator.clipboard?.writeText(`${plan.run.a.lat}, ${plan.run.a.lon}`).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }, () => {});
+          }}>{copied ? 'Copiado' : 'Copiar para el reloj'}</button>
+          <span className="sub small">Punto de la salida 1: {plan.run.a.lat}, {plan.run.a.lon}. Pegalo en el <a href="/door/index.html">Reloj de puerta</a>.</span>
         </div>
       )}
 

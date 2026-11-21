@@ -34,11 +34,15 @@
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
   .err { color: #ff8a8a; margin-top: 10px; }
   /* Stand by */
-  #standby { display: none; max-width: 520px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 32px; }
-  #standby dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; font-size: 1.25rem; margin: 16px 0; }
+  #standby { display: none; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+             padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
+  #standby h1 { font-size: 1.2rem; margin: 0; color: var(--muted); }
+  #standby dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .95rem; margin: 0; }
   #standby dt { color: var(--muted); }
   #standby dd { margin: 0; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
-  .btn.go { background: var(--go); font-size: 1.4rem; padding: 22px; }
+  #run { flex: 1; min-height: 55vh; margin: 0; border-radius: 24px; background: var(--go); font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1.05; font-weight: 900; }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: .95rem; padding: 10px; }
+  #sbPoint.none { color: var(--warn); }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -59,8 +63,9 @@
   <p class="sub">Cuenta regresiva para salir del avión: la primera salida por el punto, las demás por tiempo según la separación y el ground speed. Funciona sin internet: abrila una vez con señal y agregala a la pantalla de inicio.</p>
 
   <label for="point">Punto de la 1ª salida <small>(latitud, longitud; vacío = arrancar por tiempo)</small></label>
-  <input id="point" inputmode="decimal" placeholder="-33.0746, -60.6346">
+  <input id="point" inputmode="decimal" placeholder="Pegá o escribí: latitud, longitud">
   <button class="btn secondary" id="fromPlan" type="button" hidden>Traer del planificador de la pasada</button>
+  <p class="note">En <i>Pasada</i>, <i>Copiar para el reloj</i> copia el punto de la salida 1: pegalo acá.</p>
 
   <label for="gap">Separación entre salidas <small>(m, la FAI pide al menos 600)</small></label>
   <input id="gap" inputmode="numeric" value="600">
@@ -77,7 +82,6 @@
 
 <main id="standby">
   <h1>Stand by</h1>
-  <p class="sub">Revisá que esté todo bien mientras suben. Al empezar la pasada, tocá <b>Iniciar jump run</b>.</p>
   <dl>
     <dt>Punto de la 1ª salida</dt><dd id="sbPoint"></dd>
     <dt>Separación</dt><dd id="sbGap"></dd>
@@ -86,13 +90,13 @@
     <dt>Distancia al punto</dt><dd id="sbDist"></dd>
     <dt>Segundos entre salidas</dt><dd id="sbSecs"></dd>
   </dl>
-  <button class="btn go" id="run" type="button">Iniciar jump run</button>
-  <button class="btn secondary" id="edit" type="button">Cambiar la configuración</button>
+  <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
+  <button class="link" id="edit" type="button">Cambiar la configuración</button>
 </main>
 
 <section id="clock" aria-live="polite">
   <div class="bar">
-    <button id="undo" type="button">Deshacer</button>
+    <span></span>
     <button id="stop" type="button">Terminar</button>
   </div>
   <div id="label"></div>
@@ -199,11 +203,12 @@
     clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
   };
 
-  function show(id) { for (const k of ['setup', 'standby', 'clock']) $(k).style.display = k === id ? (k === 'clock' ? 'flex' : 'block') : 'none'; }
+  function show(id) { for (const k of ['setup', 'standby', 'clock']) $(k).style.display = k === id ? (k === 'setup' ? 'block' : 'flex') : 'none'; }
 
   function renderStandby() {
     const gs = groundSpeed();
-    $('sbPoint').textContent = cfg.point ? cfg.point.lat.toFixed(5) + ', ' + cfg.point.lon.toFixed(5) : 'Sin punto (por tiempo)';
+    $('sbPoint').textContent = cfg.point ? cfg.point.lat.toFixed(5) + ', ' + cfg.point.lon.toFixed(5) : 'SIN PUNTO (por tiempo)';
+    $('sbPoint').className = cfg.point ? '' : 'none';
     $('sbGap').textContent = cfg.gap + ' m';
     $('sbGs').textContent = cfg.gs + ' kt';
     $('sbGps').textContent = gpsText();
@@ -219,22 +224,24 @@
     clearInterval(timer); timer = setInterval(render, 100); render();
   };
 
+  // Ending needs a second tap within 3 s (no dialogs on the plane); it goes back to stand by.
+  let stopArmed = 0;
   $('stop').onclick = (e) => {
     e.stopPropagation();
-    running = false; clearInterval(timer);
-    try { lock && lock.release(); } catch { /* ignore */ }
-    try { document.fullscreenElement && document.exitFullscreen(); } catch { /* ignore */ }
-    show('setup');
-  };
-  $('undo').onclick = (e) => {
-    e.stopPropagation();
-    exits.pop();
-    buzzed = false; render();
+    if (Date.now() - stopArmed > 3000) {
+      stopArmed = Date.now(); $('stop').textContent = '¿Terminar? Tocá de nuevo';
+      setTimeout(() => { $('stop').textContent = 'Terminar'; }, 3000);
+      return;
+    }
+    running = false; $('stop').textContent = 'Terminar';
+    clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
+    show('standby');
   };
 
   // A tap anywhere marks an exit, only once the counter is at zero.
   $('clock').addEventListener('pointerdown', (e) => {
     if (e.target.closest('button')) return;
+    if (!running) return;
     render();
     if (!ready) return;
     const now = Date.now();
