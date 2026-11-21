@@ -94,7 +94,7 @@
     <div class="tile" id="tPoint" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><b id="sbPoint"></b></div>
     <div class="tile" id="tGps" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg><b id="sbGps"></b></div>
     <div class="tile" id="tGs" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l20-8-7 9-3-3-4 5v-5z"/></svg><b id="sbGs"></b></div>
-    <div class="tile" role="img" aria-label="Segundos entre salidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><b id="sbSecs"></b></div>
+    <div class="tile" id="tSecs" role="img" aria-label="Segundos entre salidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><b id="sbSecs"></b></div>
   </div>
   <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
   <button class="btn" id="edit" type="button">Mantené apretado para cambiar la configuración</button>
@@ -191,9 +191,11 @@
   try { navigator.permissions.query({ name: 'geolocation' }).then((r) => { if (r.state === 'granted') startGps(); }); } catch { /* old browser */ }
   // What the screens show: the GPS speed whenever there is a recent one (even on the ground), else null.
   function realSpeed() { return gpsGs != null && Date.now() - gpsAt < 5000 ? gpsGs : null; }
-  // What the countdown uses: GPS speed only if the plane is flying (over ~30 kt); otherwise the typed one.
+  // What the seconds use: the real GPS speed whenever there is one; the typed one only without GPS or standing
+  // still (under 1 kt, the seconds would be endless).
   function groundSpeed() {
-    if (gpsGs != null && Date.now() - gpsAt < 5000 && gpsGs > 15) return { v: gpsGs, src: 'GPS' };
+    const real = realSpeed();
+    if (real != null && real > KT) return { v: real, src: 'GPS' };
     return { v: cfg.gs * KT, src: 'manual' };
   }
 
@@ -240,6 +242,7 @@
     $('tGs').className = 'tile' + (real != null ? ' ok' : '');
     $('tGs').setAttribute('aria-label', 'Ground speed ' + (real != null ? 'real (GPS)' : 'cargado'));
     $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
+    $('tSecs').className = 'tile' + (gs.src === 'GPS' ? ' ok' : '');
   }
 
   // Exceptional actions (end the jump run, change the setup): hold the button 1.5 s while the bar fills up.
