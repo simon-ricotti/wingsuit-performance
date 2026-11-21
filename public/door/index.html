@@ -47,17 +47,36 @@
   .tile b { font-size: 1.6rem; font-weight: 900; font-variant-numeric: tabular-nums; }
   .tile.ok { border-color: var(--go); } .tile.ok svg { color: var(--go); }
   .tile.no { border-color: var(--warn); } .tile.no svg { color: var(--warn); }
-  #run { flex: 1; min-height: 55vh; margin: 0; border-radius: 24px; background: var(--go); font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1.05; font-weight: 900; }
-  #edit { margin: 0; padding: 14px; font-size: 1rem; background-color: #2a2a2a; border: 1px solid #444; }
+  #run { flex: 1; min-height: 48vh; margin: 0; border-radius: 24px; background: var(--go); font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1.05; font-weight: 900; }
+  #edit, .holdb { margin: 0; padding: 14px; font-size: 1rem; background-color: #2a2a2a; border: 1px solid #444; }
   /* Hold-to-confirm buttons: the bar fills up while pressed. */
-  #edit, #stop { background-image: linear-gradient(var(--brand), var(--brand)); background-repeat: no-repeat; background-position: left; background-size: 0% 100%; }
-  #edit.hold, #stop.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
+  #edit, #stop, .holdb { background-image: linear-gradient(var(--brand), var(--brand)); background-repeat: no-repeat; background-position: left; background-size: 0% 100%; }
+  #edit.hold, #stop.hold, .holdb.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
   /* Map picker (needs internet: Leaflet and the satellite tiles are loaded only when opened) */
   #picker { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); z-index: 10; }
   #pmap { flex: 1; }
   #picker .row { display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); align-items: center; }
   #picker .row .btn { margin: 0; }
   #pmsg { padding: 10px 12px 0; color: var(--muted); }
+  /* Wind mode */
+  #wind { display: none; flex-direction: column; gap: 10px; max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+          padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
+  #wind h1 { font-size: 1.2rem; margin: 0; color: var(--muted); }
+  #wNow { display: flex; flex-wrap: wrap; gap: 8px; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #wNow span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #1e1e1e; }
+  #wNow svg { width: 1.1em; height: 1.1em; }
+  #wNow .off { opacity: .45; }
+  .turn { height: 14px; border-radius: 7px; background: #2a2a2a; overflow: hidden; }
+  .turn i { display: block; height: 100%; width: 0; background: var(--brand); }
+  #wList { flex: 1; overflow: auto; }
+  #wList table { width: 100%; border-collapse: collapse; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+  #wList th { font-size: .85rem; color: var(--muted); text-align: right; font-weight: 600; padding: 4px 6px; }
+  #wList td { text-align: right; font-weight: 800; padding: 8px 6px; border-top: 1px solid #333; }
+  #wList th:first-child, #wList td:first-child { text-align: left; }
+  #wList tr.doubt td { color: var(--warn); }
+  #wList .arrow { display: inline-block; }
+  .wbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wbtns .btn { margin: 0; padding: 12px; font-size: .95rem; }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -124,7 +143,21 @@
     <div class="tile" id="tSecs" role="img" aria-label="Segundos entre salidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><b id="sbSecs"></b></div>
   </div>
   <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
+  <button class="btn holdb" id="toWind" type="button">Mantené para el modo viento</button>
   <button class="btn" id="edit" type="button">Mantené apretado para cambiar la configuración</button>
+</main>
+
+<main id="wind">
+  <h1>Viento · hacé un 360 a airspeed constante</h1>
+  <div id="wNow"></div>
+  <div class="turn" aria-hidden="true"><i id="wTurn"></i></div>
+  <div id="wList"></div>
+  <p class="note" id="wNote">Cada 360 completo agrega una fila: altura GPS (ft sobre el mar), de dónde viene el viento y su intensidad. En amarillo, una medición dudosa (el airspeed cambió o el giro fue irregular).</p>
+  <div class="wbtns">
+    <button class="btn secondary" id="wDl" type="button">Descargar lecturas</button>
+    <button class="btn holdb" id="wClear" type="button">Mantené para borrar</button>
+  </div>
+  <button class="btn holdb" id="wBack" type="button">Mantené para volver</button>
 </main>
 
 <section id="picker" aria-label="Elegir el punto en el mapa">
@@ -226,13 +259,108 @@
   $('pCancel').onclick = () => { $('picker').style.display = 'none'; };
   $('pUse').onclick = () => { if (picked) $('point').value = picked.lat + ', ' + picked.lon; $('picker').style.display = 'none'; };
 
+  // ---- Wind by circling ----
+  // In a 360 at constant airspeed the ground velocity vector draws a circle: its centre is the wind and its radius the
+  // true airspeed. Detect a full turn from the GPS track, fit a circle (least squares) to the velocities of that turn.
+  const WIND_RAW = 'wsp:wind-raw', WIND_RES = 'wsp:winds';
+  const raw = read(WIND_RAW) || [];       // GPS readings of the climb, to check the method later
+  const winds = read(WIND_RES) || [];     // measured winds, newest last
+  let turnS = [], turnAcc = 0, wPrev = null, rawSaved = 0;
+  const MIN_FLY = 20;                     // m/s (~40 kt): below that, the plane is not flying
+  const MAX_TURN_S = 150;                 // a 360 slower than this is not taken
+
+  function windSample(p, here, now) {
+    const c = p.coords;
+    let vx = null, vy = null;
+    if (c.speed != null && c.speed >= 0 && c.heading != null && !isNaN(c.heading)) {
+      vx = c.speed * Math.sin(c.heading * Math.PI / 180); vy = c.speed * Math.cos(c.heading * Math.PI / 180);
+    } else if (wPrev && now - wPrev.t >= 900) {
+      const dt = (now - wPrev.t) / 1000, r = Math.PI / 180;
+      vx = (here.lon - wPrev.p.lon) * r * Math.cos(here.lat * r) * 6371000 / dt; vy = (here.lat - wPrev.p.lat) * r * 6371000 / dt;
+    }
+    wPrev = { p: here, t: now };
+    if (vx == null) return;
+    const alt = c.altitude != null && isFinite(c.altitude) ? c.altitude : null;
+    raw.push([now, +here.lat.toFixed(6), +here.lon.toFixed(6), alt == null ? null : Math.round(alt), +vx.toFixed(2), +vy.toFixed(2)]);
+    if (raw.length > 6000) raw.splice(0, raw.length - 6000);
+    if (now - rawSaved > 10000) { write(WIND_RAW, raw); rawSaved = now; }
+
+    const sp = Math.hypot(vx, vy);
+    if (sp < MIN_FLY) { turnS = []; turnAcc = 0; return; }
+    const crs = Math.atan2(vx, vy) * 180 / Math.PI;
+    const last = turnS[turnS.length - 1];
+    let d = 0;
+    if (last) { d = crs - last.crs; d = ((d + 540) % 360) - 180; if (Math.abs(d) > 60) d = 0; } // GPS jump: ignore
+    // Flying straight (no turn started yet): the turn starts at this reading.
+    if (Math.abs(d) < 1.5 && Math.abs(turnAcc) < 20) { turnS = []; turnAcc = 0; d = 0; }
+    turnS.push({ t: now, vx, vy, alt, crs, d });
+    turnAcc += d;
+    // A turn the other way, or too slow: start counting again from where it changed.
+    while (turnS.length > 2 && (now - turnS[0].t > MAX_TURN_S * 1000)) { turnAcc -= turnS[1].d; turnS.shift(); }
+    if (turnS.length > 5 && Math.sign(d) && Math.sign(d) !== Math.sign(turnAcc) && Math.abs(turnAcc) > 45 && Math.abs(d) > 8) { turnS = [turnS[turnS.length - 1]]; turnS[0].d = 0; turnAcc = 0; }
+    if (Math.abs(turnAcc) >= 360) {
+      // Only the readings of the last full 360 (nothing of the straight leg before it).
+      let k = turnS.length - 1, a = 0;
+      while (k > 0 && Math.abs(a) < 360) { a += turnS[k].d; k--; }
+      fitWind(turnS.slice(k)); turnS = [turnS[turnS.length - 1]]; turnS[0].d = 0; turnAcc = 0;
+    }
+  }
+
+  // Kåsa circle fit: x² + y² + D·x + E·y + F = 0 by least squares (3×3 normal equations).
+  function fitWind(S) {
+    let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sz = 0, sxz = 0, syz = 0;
+    const n = S.length;
+    for (const q of S) { const z = q.vx * q.vx + q.vy * q.vy; sx += q.vx; sy += q.vy; sxx += q.vx * q.vx; syy += q.vy * q.vy; sxy += q.vx * q.vy; sz += z; sxz += q.vx * z; syz += q.vy * z; }
+    const A = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]], b = [-sxz, -syz, -sz];
+    const det = (M) => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    const D0 = det(A);
+    if (!D0) return;
+    const col = (i) => A.map((row, k) => row.map((v, j) => (j === i ? b[k] : v)));
+    const D = det(col(0)) / D0, E = det(col(1)) / D0, F = det(col(2)) / D0;
+    const cx = -D / 2, cy = -E / 2, r = Math.sqrt(cx * cx + cy * cy - F);
+    if (!isFinite(r) || r < MIN_FLY) return;
+    const rms = Math.sqrt(S.reduce((a, q) => a + (Math.hypot(q.vx - cx, q.vy - cy) - r) ** 2, 0) / n);
+    if (rms > 4) return; // not a clean turn: discarded
+    const alts = S.map((q) => q.alt).filter((a) => a != null);
+    winds.push({
+      t: S[S.length - 1].t,
+      altMin: alts.length ? Math.min(...alts) : null, altMax: alts.length ? Math.max(...alts) : null,
+      from: Math.round(((Math.atan2(-cx, -cy) * 180 / Math.PI) + 360) % 360), // where the wind comes from
+      kt: Math.round(Math.hypot(cx, cy) / KT), tas: Math.round(r / KT), rms: +(rms / KT).toFixed(1),
+      ok: rms < 1.5,
+    });
+    write(WIND_RES, winds); write(WIND_RAW, raw);
+  }
+
+  const ft = (m) => Math.round(m / 0.3048 / 50) * 50;
+  function renderWind() {
+    const gpsOn = !!pos && !gpsErr && Date.now() - posAt < POS_FRESH, real = realSpeed();
+    const last = raw[raw.length - 1];
+    $('wNow').innerHTML =
+      '<span class="' + (gpsOn ? '' : 'off') + '">' + ICON.gps + (gpsOn ? 'GPS' : 'Sin GPS') + '</span>'
+      + '<span>' + ICON.plane + (real != null ? kt(real) + ' kt' : '–') + '</span>'
+      + '<span>' + (last && last[3] != null ? ft(last[3]).toLocaleString('es-AR') + ' ft' : '– ft') + '</span>'
+      + '<span>↻ ' + Math.min(360, Math.round(Math.abs(turnAcc))) + '°</span>';
+    $('wTurn').style.width = Math.min(100, Math.abs(turnAcc) / 3.6) + '%';
+    if (!winds.length) { $('wList').innerHTML = '<p class="note">Todavía no hay mediciones.</p>'; return; }
+    $('wList').innerHTML = '<table><thead><tr><th>Altura (ft)</th><th>Viene de</th><th>kt</th><th>TAS</th></tr></thead><tbody>'
+      + winds.slice().reverse().map((w) => '<tr class="' + (w.ok ? '' : 'doubt') + '"><td>'
+        + (w.altMin == null ? '–' : ft(w.altMin).toLocaleString('es-AR') + (ft(w.altMax) - ft(w.altMin) >= 200 ? '–' + ft(w.altMax).toLocaleString('es-AR') : ''))
+        + '</td><td><span class="arrow" style="transform: rotate(' + (w.from + 180) + 'deg)">↑</span> ' + String(w.from).padStart(3, '0') + '°</td><td>' + w.kt + '</td><td>' + w.tas + '</td></tr>').join('')
+      + '</tbody></table>';
+  }
+
   // ---- GPS ----
   // A still phone (on the ground) sends few fixes, and iOS reports speed −1 when it does not know it:
   // a position counts for 30 s, and a light poll every 4 s keeps it fresh.
   const POS_FRESH = 30000;
   let pos = null, posAt = 0, acc = null, gpsGs = null, gpsAt = 0, prev = null, watch = null, gpsErr = '';
+  let lastFixTs = 0;
   function onFix(p) {
+    if (p.timestamp && p.timestamp === lastFixTs) return; // the poll can repeat the watch's fix
+    lastFixTs = p.timestamp || 0;
     const now = Date.now(), here = { lat: p.coords.latitude, lon: p.coords.longitude };
+    windSample(p, here, now);
     let v = p.coords.speed;
     if (v == null || isNaN(v) || v < 0) v = prev && now - prev.t > 900 ? dist(prev.p, here) / ((now - prev.t) / 1000) : null;
     prev = { p: here, t: now };
@@ -307,7 +435,7 @@
     clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
   };
 
-  function show(id) { for (const k of ['setup', 'standby', 'clock']) $(k).style.display = k === id ? (k === 'setup' ? 'block' : 'flex') : 'none'; }
+  function show(id) { for (const k of ['setup', 'standby', 'clock', 'wind']) $(k).style.display = k === id ? (k === 'setup' ? 'block' : 'flex') : 'none'; }
 
   function renderStandby() {
     const gs = groundSpeed();
@@ -345,6 +473,19 @@
     show('standby');
   });
   holdButton($('edit'), () => { clearInterval(timer); show('setup'); });
+  holdButton($('toWind'), () => { startGps(); clearInterval(timer); show('wind'); timer = setInterval(renderWind, 1000); renderWind(); });
+  holdButton($('wBack'), () => { clearInterval(timer); show('standby'); timer = setInterval(renderStandby, 500); renderStandby(); });
+  holdButton($('wClear'), () => { winds.length = 0; raw.length = 0; turnS = []; turnAcc = 0; write(WIND_RES, winds); write(WIND_RAW, raw); renderWind(); });
+  // Raw readings and results as CSV, to compare with the manual method.
+  $('wDl').onclick = () => {
+    const rows = ['time,lat,lon,alt_m,vx_ms,vy_ms'].concat(raw.map((r) => [new Date(r[0]).toISOString()].concat(r.slice(1)).join(',')));
+    rows.push('', 'time,alt_min_m,alt_max_m,from_deg,wind_kt,tas_kt,rms_kt,ok');
+    for (const w of winds) rows.push([new Date(w.t).toISOString(), w.altMin, w.altMax, w.from, w.kt, w.tas, w.rms, w.ok].join(','));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+    a.download = 'viento-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
   $('run').onclick = () => {
     exits = []; minDist = Infinity; passed = false; running = true; buzzed = false; ready = false;
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
