@@ -1,0 +1,224 @@
+<!doctype html>
+<!-- Door timer: works offline (service worker), self-contained on purpose (no Next bundle to cache).
+     First exit by the GPS position of the exit point; then by time: separation / ground speed, recalculated at each tap.
+     FAI 5.5.4 (separation announced as seconds between exits) and 5.5.9 (door clock: seconds since the last exit, only an aid). -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#121212">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Reloj de puerta</title>
+<style>
+  :root { --bg: #121212; --fg: #fff; --muted: #b9b9b9; --brand: #9b2a8f; --warn: #f0b354; --go: #1f9d55; --late: #d63c3c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  button { font: inherit; }
+  /* Setup */
+  #setup { max-width: 520px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 32px; }
+  h1 { font-size: 1.6rem; margin: 8px 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 16px; line-height: 1.4; }
+  label { display: block; font-weight: 700; margin: 14px 0 6px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input { width: 100%; font: inherit; font-size: 1.15rem; padding: 12px; border-radius: 10px; border: 1px solid #444; background: #1e1e1e; color: var(--fg); }
+  .btn { display: block; width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font-size: 1.15rem; font-weight: 700; }
+  .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
+  .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
+  .err { color: #ff8a8a; margin-top: 10px; }
+  /* Clock */
+  #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+           padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: manipulation; }
+  #clock.warn { background: var(--warn); color: #111; }
+  #clock.go { background: var(--go); }
+  #clock.late { background: var(--late); }
+  #label { font-size: clamp(1.2rem, 6vw, 2.4rem); font-weight: 800; letter-spacing: .02em; }
+  #big { font-size: min(58vw, 46vh); font-weight: 900; line-height: .95; font-variant-numeric: tabular-nums; }
+  #info { font-size: clamp(1rem, 4.4vw, 1.5rem); font-weight: 600; opacity: .9; line-height: 1.35; }
+  #hint { font-size: clamp(.9rem, 3.6vw, 1.2rem); opacity: .75; margin-top: 10px; }
+  .bar { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 10px; }
+  .bar button { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; font-weight: 700; font-size: 1rem; }
+</style>
+</head>
+<body>
+<main id="setup">
+  <h1>Reloj de puerta</h1>
+  <p class="sub">Cuenta regresiva para salir del avión: la primera salida por el punto, las demás por tiempo según la separación y el ground speed. Funciona sin internet: abrila una vez con señal y agregala a la pantalla de inicio.</p>
+
+  <label for="point">Punto de la 1ª salida <small>(latitud, longitud; vacío = arrancar por tiempo)</small></label>
+  <input id="point" inputmode="decimal" placeholder="-33.0746, -60.6346">
+  <button class="btn secondary" id="fromPlan" type="button" hidden>Traer del planificador de la pasada</button>
+
+  <label for="gap">Separación entre salidas <small>(m, la FAI pide al menos 600)</small></label>
+  <input id="gap" inputmode="numeric" value="600">
+
+  <label for="gs">Ground speed si no hay GPS <small>(kt)</small></label>
+  <input id="gs" inputmode="numeric" value="80">
+
+  <button class="btn" id="start" type="button">Empezar</button>
+  <p class="err" id="err" role="alert"></p>
+  <p class="note">Con GPS (cerca de la ventana) usa el ground speed real; si no, el que cargues. Cada toque en la pantalla marca una salida y vuelve a calcular los segundos con el ground speed de ese momento. Es una ayuda: la decisión de salir es de cada piloto (FAI 5.5.9).</p>
+  <p class="note" id="gpsNote"></p>
+</main>
+
+<section id="clock" aria-live="polite">
+  <div class="bar">
+    <button id="undo" type="button">Deshacer</button>
+    <button id="stop" type="button">Terminar</button>
+  </div>
+  <div id="label"></div>
+  <div id="big">1ª</div>
+  <div id="info"></div>
+  <div id="hint"></div>
+</section>
+
+<script>
+(() => {
+  const KT = 0.514444, STORE = 'wsp:door', PLAN = 'wsp:jump-run-plan';
+  const $ = (id) => document.getElementById(id);
+  const num = (s) => parseFloat(String(s).replace(',', '.'));
+  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
+
+  // Distance in metres (equirectangular: enough for a few km).
+  function dist(a, b) {
+    const R = 6371000, r = Math.PI / 180, x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r), y = (b.lat - a.lat) * r;
+    return Math.hypot(x, y) * R;
+  }
+
+  // ---- Setup ----
+  const saved = read(STORE);
+  if (saved) { $('point').value = saved.point || ''; $('gap').value = saved.gap || '600'; $('gs').value = saved.gs || '80'; }
+  const plan = read(PLAN);
+  if (plan && plan.jumpRun) {
+    $('fromPlan').hidden = false;
+    $('fromPlan').onclick = () => {
+      // Exit 1 is the start of the planned jump run; ground speed across the wind = √(TAS² − W²).
+      $('point').value = plan.jumpRun.a.lat + ', ' + plan.jumpRun.a.lon;
+      const i = plan.inputs || {};
+      if (i.gap) $('gap').value = i.gap;
+      const tas = num(i.tasKt), w = num(i.windKt);
+      if (tas > w && w >= 0) $('gs').value = String(Math.round(Math.sqrt(tas * tas - w * w)));
+    };
+  }
+
+  // ---- GPS ----
+  let pos = null, gpsGs = null, gpsAt = 0, prev = null, watch = null;
+  function startGps() {
+    if (!('geolocation' in navigator) || watch != null) return;
+    watch = navigator.geolocation.watchPosition((p) => {
+      const now = Date.now(), here = { lat: p.coords.latitude, lon: p.coords.longitude };
+      let v = p.coords.speed;
+      if ((v == null || isNaN(v)) && prev && now - prev.t > 500) v = dist(prev.p, here) / ((now - prev.t) / 1000);
+      prev = { p: here, t: now };
+      pos = here;
+      if (v != null && isFinite(v)) { gpsGs = v; gpsAt = now; }
+    }, (e) => { $('gpsNote').textContent = 'GPS: ' + (e.code === 1 ? 'sin permiso; se usa el ground speed cargado.' : 'sin señal por ahora.'); },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  }
+  // GPS speed only if recent and the plane is flying (over ~30 kt); otherwise the typed one.
+  function groundSpeed() {
+    if (gpsGs != null && Date.now() - gpsAt < 5000 && gpsGs > 15) return { v: gpsGs, src: 'GPS' };
+    return { v: cfg.gs * KT, src: 'manual' };
+  }
+
+  // ---- Keep the screen on ----
+  let lock = null;
+  async function wake() { try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch { /* not supported */ } }
+  document.addEventListener('visibilitychange', () => { if (running) wake(); });
+
+  // ---- Clock ----
+  let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, timer = null, buzzed = false;
+
+  $('start').onclick = () => {
+    const gap = num($('gap').value), gs = num($('gs').value), ptxt = $('point').value.trim();
+    let point = null;
+    if (ptxt) {
+      const m = ptxt.split(/[\s,;]+/).map(num);
+      if (m.length !== 2 || !m.every(isFinite) || Math.abs(m[0]) > 90 || Math.abs(m[1]) > 180) { $('err').textContent = 'El punto tiene que ser latitud, longitud (por ejemplo -33.0746, -60.6346).'; return; }
+      point = { lat: m[0], lon: m[1] };
+    }
+    if (!(gap > 0) || !(gs > 0)) { $('err').textContent = 'Completá la separación y el ground speed con números.'; return; }
+    $('err').textContent = '';
+    write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value });
+    cfg = { point, gap, gs };
+    exits = []; minDist = Infinity; running = true; buzzed = false;
+    startGps(); wake();
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
+    $('setup').style.display = 'none'; $('clock').style.display = 'flex';
+    timer = setInterval(render, 100); render();
+  };
+
+  $('stop').onclick = (e) => {
+    e.stopPropagation();
+    running = false; clearInterval(timer);
+    try { lock && lock.release(); } catch { /* ignore */ }
+    try { document.fullscreenElement && document.exitFullscreen(); } catch { /* ignore */ }
+    $('clock').style.display = 'none'; $('setup').style.display = 'block';
+  };
+  $('undo').onclick = (e) => {
+    e.stopPropagation();
+    exits.pop();
+    if (exits.length) target = exits[exits.length - 1].target;
+    buzzed = false; render();
+  };
+
+  // A tap anywhere marks an exit (ignoring a second tap within 1.5 s).
+  $('clock').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    const now = Date.now(), last = exits[exits.length - 1];
+    if (last && now - last.t < 1500) return;
+    const gs = groundSpeed();
+    target = Math.ceil(cfg.gap / gs.v); // rounded up: never under the separation
+    exits.push({ t: now, target, gs });
+    buzzed = false; render();
+  });
+
+  function setState(cls) { $('clock').className = cls; }
+  const kt = (v) => Math.round(v / KT);
+
+  function render() {
+    if (!running) return;
+    const now = Date.now(), gs = groundSpeed(), last = exits[exits.length - 1];
+    if (!last) {
+      // Before the first exit: by the point (GPS), or waiting for the first tap.
+      $('label').textContent = 'PRIMERA SALIDA';
+      if (cfg.point && pos) {
+        const d = dist(pos, cfg.point);
+        minDist = Math.min(minDist, d);
+        const passed = d < 400 && d > minDist + 40; // was closer and is moving away
+        const eta = d / gs.v;
+        if (passed || eta <= 0.5) { setState('go'); $('big').textContent = 'YA'; $('info').textContent = passed ? 'Pasaron el punto' : 'Sobre el punto'; }
+        else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); $('info').textContent = Math.round(d) + ' m al punto · ' + kt(gs.v) + ' kt (' + gs.src + ')'; }
+        $('hint').textContent = 'Tocá la pantalla al salir';
+      } else {
+        setState(''); $('big').textContent = '1ª';
+        $('info').textContent = cfg.point ? 'Esperando el GPS…' : 'Sin punto: arranca con la primera salida';
+        $('hint').textContent = 'Tocá la pantalla cuando salga el primero';
+      }
+      return;
+    }
+    const since = (now - last.t) / 1000, left = last.target - since;
+    $('label').textContent = 'SALIDA ' + (exits.length + 1);
+    if (left > 0) {
+      setState(left <= 3 ? 'warn' : '');
+      $('big').textContent = String(Math.ceil(left));
+    } else {
+      // Late: green at zero, red after 5 s more to hurry up.
+      setState(-left > 5 ? 'late' : 'go');
+      $('big').textContent = 'YA';
+      if (!buzzed) { buzzed = true; try { navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch { /* ignore */ } }
+    }
+    $('info').textContent = cfg.gap + ' m a ' + kt(last.gs.v) + ' kt (' + last.gs.src + ') = ' + last.target + ' s · desde la última: ' + Math.floor(since) + ' s';
+    $('hint').textContent = 'Ahora: ' + kt(gs.v) + ' kt (' + gs.src + ') · tocá la pantalla al salir';
+  }
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
