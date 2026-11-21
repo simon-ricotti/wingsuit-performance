@@ -52,10 +52,12 @@
   #clock.warn { background: var(--warn); color: #111; }
   #clock.go { background: var(--go); }
   #clock.late { background: var(--late); }
-  #label { font-size: clamp(1.2rem, 6vw, 2.4rem); font-weight: 800; letter-spacing: .02em; }
+  #label { display: flex; align-items: center; gap: 8px; font-size: clamp(1.6rem, 8vw, 3rem); font-weight: 900; }
+  #label svg, .chips svg { width: 1.1em; height: 1.1em; flex: none; }
   #big { font-size: min(58vw, 46vh); font-weight: 900; line-height: .95; font-variant-numeric: tabular-nums; }
-  #info { font-size: clamp(1rem, 4.4vw, 1.5rem); font-weight: 600; opacity: .9; line-height: 1.35; }
-  #hint { font-size: clamp(.9rem, 3.6vw, 1.2rem); opacity: .75; margin-top: 10px; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; font-size: clamp(1.3rem, 6vw, 2rem); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.28); }
+  .chips .off { opacity: .45; }
   .bar { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 10px; }
   .bar button { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; font-weight: 700; font-size: 1rem; }
 </style>
@@ -100,10 +102,9 @@
     <span></span>
     <button id="stop" type="button">Terminar</button>
   </div>
-  <div id="label"></div>
+  <div id="label" aria-label="Salida"></div>
   <div id="big">1ª</div>
-  <div id="info"></div>
-  <div id="hint"></div>
+  <div class="chips" id="chips"></div>
 </section>
 
 <script>
@@ -278,44 +279,59 @@
   function setState(cls) { $('clock').className = cls; }
   const kt = (v) => Math.round(v / KT);
 
+  // Icons (stroke, currentColor) for the clock: few words, big symbols.
+  const I = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const ICON = {
+    jumper: I('<circle cx="12" cy="4.5" r="2"/><path d="M4 10l8 2 8-2M12 12v4l-4 5M12 16l4 5"/>'),
+    plane: I('<path d="M2 16l20-8-7 9-3-3-4 5v-5z"/>'),
+    gps: I('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>'),
+    since: I('<path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4"/><path d="M12 8v4l3 2"/>'),
+    pin: I('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
+    tap: I('<path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v2M17 11a2 2 0 0 1 4 0v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4 14a2 2 0 0 1 3.3-2.2L9 14"/>'),
+    lock: I('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+  };
+  const chip = (icon, text, label, off) => '<span' + (off ? ' class="off"' : '') + ' aria-label="' + label + '">' + ICON[icon] + (text || '') + '</span>';
+
   function render() {
     if (!running) return;
     const now = Date.now(), gs = groundSpeed(), last = exits[exits.length - 1];
+    const gpsOn = !!pos && !gpsErr && now - posAt < POS_FRESH;
+    const speed = chip('plane', kt(gs.v), 'Ground speed ' + kt(gs.v) + ' kt') + chip('gps', '', gpsOn ? 'GPS activo' : 'Sin GPS', !gpsOn);
     ready = false;
+    $('label').innerHTML = ICON.jumper + (exits.length + 1);
+    let chips;
     if (!last) {
       // Before the first exit: by the point (GPS). Without a point or without GPS, the first tap is free.
-      $('label').textContent = 'PRIMERA SALIDA';
-      if (cfg.point && pos && Date.now() - posAt < POS_FRESH) {
+      if (cfg.point && pos && now - posAt < POS_FRESH) {
         const d = dist(pos, cfg.point);
         minDist = Math.min(minDist, d);
         const passed = d < 400 && d > minDist + 40; // was closer and is moving away
         const eta = d / gs.v;
-        if (passed || eta <= 0.5) { ready = true; setState('go'); $('big').textContent = 'YA'; $('info').textContent = passed ? 'Pasaron el punto' : 'Sobre el punto'; }
-        else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); $('info').textContent = Math.round(d) + ' m al punto · ' + kt(gs.v) + ' kt (' + gs.src + ')'; }
-        $('hint').textContent = ready ? 'Tocá la pantalla al salir' : 'Se puede tocar al llegar al punto';
+        if (passed || eta <= 0.5) { ready = true; setState('go'); $('big').textContent = 'YA'; }
+        else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); }
+        chips = chip('pin', Math.round(d) + ' m', 'Distancia al punto') + speed;
       } else {
         ready = true;
         setState(''); $('big').textContent = '1ª';
-        $('info').textContent = cfg.point ? (pos ? 'Se perdió el GPS: tocá al salir' : 'Sin GPS todavía: tocá al salir') : 'Sin punto: arranca con la primera salida';
-        $('hint').textContent = 'Tocá la pantalla cuando salga el primero';
+        chips = chip('pin', '', cfg.point ? 'Punto cargado' : 'Sin punto', !cfg.point) + speed;
       }
-      return;
-    }
-    const since = (now - last.t) / 1000, left = last.target - since;
-    $('label').textContent = 'SALIDA ' + (exits.length + 1);
-    if (left > 0) {
-      setState(left <= 3 ? 'warn' : '');
-      $('big').textContent = String(Math.ceil(left));
     } else {
-      ready = true;
-      // Late: green at zero, red after 5 s more to hurry up.
-      setState(-left > 5 ? 'late' : 'go');
-      $('big').textContent = 'YA';
-      if (!buzzed) { buzzed = true; try { navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch { /* ignore */ } }
+      const since = (now - last.t) / 1000, left = last.target - since;
+      if (left > 0) {
+        setState(left <= 3 ? 'warn' : '');
+        $('big').textContent = String(Math.ceil(left));
+      } else {
+        ready = true;
+        // Late: green at zero, red after 5 s more to hurry up.
+        setState(-left > 5 ? 'late' : 'go');
+        $('big').textContent = 'YA';
+        if (!buzzed) { buzzed = true; try { navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch { /* ignore */ } }
+      }
+      chips = chip('since', Math.floor(since) + ' s', 'Segundos desde la última salida (5.5.9)') + speed;
     }
-    $('info').textContent = cfg.gap + ' m a ' + kt(last.gs.v) + ' kt (' + last.gs.src + ') = ' + last.target + ' s · desde la última: ' + Math.floor(since) + ' s';
-    $('hint').textContent = 'Ahora: ' + kt(gs.v) + ' kt (' + gs.src + ') · ' + (ready ? 'tocá la pantalla al salir' : 'se puede tocar en cero');
+    $('chips').innerHTML = chips + chip(ready ? 'tap' : 'lock', '', ready ? 'Tocá la pantalla al salir' : 'Todavía no se puede tocar');
   }
+
 
   // iOS ignores user-scalable=no: block pinch and double-tap zoom by hand.
   for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
