@@ -32,6 +32,9 @@
   .btn { display: block; width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font-size: 1.15rem; font-weight: 700; }
   .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
   .btn:disabled { opacity: .4; }
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .presets button { padding: 10px 4px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: var(--fg); font-size: .85rem; line-height: 1.3; }
+  .presets button b { font-size: 1.05rem; }
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
   .err { color: #ff8a8a; margin-top: 10px; }
   /* Stand by */
@@ -84,8 +87,16 @@
   <button class="btn secondary" id="fromPlan" type="button">Pegar lo copiado en Pasada</button>
   <p class="note" id="planNote">En <i>Pasada</i>, tocá <i>Copiar para el reloj</i> y después este botón: carga el punto de la salida 1, la separación y el ground speed.</p>
 
-  <label for="gap">Separación entre salidas <small>(m, la FAI pide al menos 600)</small></label>
+  <label for="gap">Separación entre salidas <small>(m)</small></label>
   <input id="gap" inputmode="numeric" value="600">
+  <!-- FAI wingsuit 5.5.4: at least 600 m. USPA SIM 4-7 (spotting): at least 1,000 ft between solo jumpers, 1,500 ft between
+       small groups, more as the groups grow and with strong upper headwinds. -->
+  <div class="presets" role="group" aria-label="Separaciones recomendadas">
+    <button type="button" data-gap="600">Wingsuit FAI<br><b>600 m</b></button>
+    <button type="button" data-gap="305">Solos USPA<br><b>1000 ft</b></button>
+    <button type="button" data-gap="457">Grupos USPA<br><b>1500 ft</b></button>
+  </div>
+  <p class="note">Grupos grandes o mucho viento en altura: más separación (USPA SIM 4-7).</p>
 
   <label for="gs">Ground speed si no hay GPS <small>(kt)</small></label>
   <input id="gs" inputmode="numeric" value="80">
@@ -177,6 +188,8 @@
   };
   // Pasting the whole copied line in the point field also fills separation and ground speed.
   $('point').addEventListener('change', () => { if ($('point').value.split(/[\s,;]+/).filter(Boolean).length > 2) fill($('point').value); });
+
+  for (const b of document.querySelectorAll('.presets button')) b.onclick = () => { $('gap').value = b.dataset.gap; };
 
   // ---- Map picker ----
   // Leaflet from a CDN only when the map is opened (setup is on the ground, with signal).
