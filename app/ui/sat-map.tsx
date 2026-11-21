@@ -110,10 +110,11 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       if (all.length) Lf.circleMarker(all[0], { radius: 4, color: '#fff', fillColor: t.color, fillOpacity: 1 }).addTo(g).bindTooltip(`${t.name}: inicio del track`);
     }
 
+    let slots: [number, number][] = [];
     if (jumpRun) {
       // Planning aid: exit N flies to point N (cycling when there are more exits than points). Approximate lanes from
       // the exit; the real lane starts at the validation (2.2).
-      const slots = exitSlots(jumpRun, exitGap);
+      slots = exitSlots(jumpRun, exitGap);
       const mid = { lat: (jumpRun.a.lat + jumpRun.b.lat) / 2, lon: (jumpRun.a.lon + jumpRun.b.lon) / 2 };
       if (refs.length) slots.forEach(([lat, lon], i) => {
         for (const c of corridor({ lat, lon }, refs[i % refs.length], half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
@@ -130,7 +131,14 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
     refs.forEach((r, i) => {
       const label = r.name || `Punto ${i + 1}`;
       const mk = Lf.marker([r.lat, r.lon], { icon: Lf.divIcon({ className: 'refpin', iconSize: [18, 18] }), draggable: !!onRefsChange, title: label, keyboard: true }).addTo(g);
-      mk.bindTooltip(label, { permanent: true, direction: 'right', offset: [10, -14] });
+      // Horizontal distance from its exit (exit N → point N), updated while dragging.
+      const text = (lat: number, lon: number) => {
+        if (!slots[i]) return label;
+        const q = projector(slots[i][0], slots[i][1])(lat, lon);
+        return `${label} · ${(Math.hypot(q[0], q[1]) / 1000).toFixed(1).replace('.', ',')} km de la salida ${i + 1}`;
+      };
+      mk.on('drag', () => { const p = mk.getLatLng(); mk.setTooltipContent(text(p.lat, p.lng)); });
+      mk.bindTooltip(text(r.lat, r.lon), { permanent: true, direction: 'right', offset: [10, -14] });
       if (onRefsChange) mk.on('dragend', () => {
         const p = mk.getLatLng();
         onRefsChange(refs.map((x, k) => (k === i ? { ...x, lat: round6(p.lat), lon: round6(p.lng) } : x)));
