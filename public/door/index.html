@@ -100,9 +100,14 @@
   .sum .doubt .v { color: var(--warn); }
   #wMeasure { margin: 0; padding: 18px; font-size: 1.4rem; font-weight: 900; }
   #wStop { margin: 0; padding: 18px; font-size: 1.2rem; background: var(--warn); color: #111; }
-  .ias { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .ias button { padding: 14px 4px; border-radius: 12px; border: 1px solid #444; background: #2a2a2a; color: #fff; font-size: 1.3rem; font-weight: 900; }
-  .ias button[data-ias=""], #wIasNo { font-size: 1rem; }
+  #wIas { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; gap: 10px;
+           padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+  .iasq { margin: 0; text-align: center; font-size: 1.4rem; font-weight: 900; color: var(--muted); }
+  .ias { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 10px; }
+  .ias button { border-radius: 18px; border: 2px solid #555; background: #2a2a2a; color: #fff; font-size: clamp(2rem, 11vw, 3.4rem); font-weight: 900; font-variant-numeric: tabular-nums; }
+  .ias button:active { background: var(--brand); }
+  .ias .dunno { font-size: clamp(1.3rem, 6vw, 2rem); background: #333; }
+  #wIasNo { font-size: clamp(1.6rem, 8vw, 2.4rem); background: #1a1a1a; color: var(--muted); }
   #wList td small { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; }
   .wbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .wbtns .btn { margin: 0; padding: 14px; font-size: .95rem; }
@@ -202,12 +207,13 @@
   <div id="wNow"></div>
   <div id="wCtl">
     <button class="btn" id="wMeasure" type="button">Medir</button>
+    <!-- Full-screen IAS chooser (mph): few, big targets, easy to hit while flying. -->
     <div id="wIas" hidden>
-      <p class="note">¿A qué IAS fija van? Si no la sabés, <b>No sé</b>: hace falta una curva de 200° o más.</p>
+      <p class="iasq">IAS fija (mph)</p>
       <div class="ias">
-        <button type="button" data-ias="70">70</button><button type="button" data-ias="75">75</button><button type="button" data-ias="80">80</button>
-        <button type="button" data-ias="85">85</button><button type="button" data-ias="90">90</button><button type="button" data-ias="95">95</button>
-        <button type="button" data-ias="">No sé</button><button type="button" id="wIasNo">Cancelar</button>
+        <button type="button" data-ias="100">100</button><button type="button" data-ias="105">105</button><button type="button" data-ias="110">110</button>
+        <button type="button" data-ias="115">115</button><button type="button" data-ias="120">120</button><button type="button" data-ias="125">125</button>
+        <button type="button" data-ias="130">130</button><button type="button" data-ias="" class="dunno">No sé</button><button type="button" id="wIasNo">✕</button>
       </div>
     </div>
     <button class="btn" id="wStop" type="button" hidden>Terminar la medición</button>
@@ -429,22 +435,24 @@
     meas.S.push({ t: now, vx, vy, alt, crs });
     if (meas.hi - meas.lo >= targetOf(meas) && meas.S.length >= 15) finishMeas();
   }
-  function startMeas(ias) {
-    meas = { ias, S: [], acc: 0, lo: 0, hi: 0 };
+  const MPH = 0.868976; // kt per mph
+  function startMeas(mph) {
+    const ias = mph ? mph * MPH : null; // the fit works in kt
+    meas = { ias, mph, S: [], acc: 0, lo: 0, hi: 0 };
     $('wMsg').textContent = '';
-    if (ias) write(STORE, Object.assign(read(STORE) || {}, { lastIas: ias }));
+
   }
   function finishMeas() {
     const m = meas; meas = null;
     const spread = m.hi - m.lo, min = m.ias ? 45 : 150;
     if (m.S.length < 10 || spread < min) {
-      $('wMsg').textContent = 'Poco cambio de rumbo (' + Math.round(spread) + '°): no se guardó. Medí durante una curva' + (m.ias ? '.' : ' de 180° o más.');
+      $('wMsg').textContent = 'Poco cambio de rumbo (' + Math.round(spread) + '°): no se guardó. Medí durante una curva' + (m.ias ? '.' : ' de 200° o más.');
       return;
     }
     const c = m.ias ? iasFit(m.S, m.ias) : circleFit(m.S);
     if (!c || c.rms > 4) { $('wMsg').textContent = 'La medición salió irregular (¿cambió la IAS?): no se guardó.'; return; }
     // Stopped before the target turn: kept, but marked doubtful.
-    pushWind(m.S, c.cx, c.cy, c.r, c.rms, c.rms < 1.5 && spread >= targetOf(m), m.ias ? 'IAS ' + m.ias : 'curva');
+    pushWind(m.S, c.cx, c.cy, c.r, c.rms, c.rms < 1.5 && spread >= targetOf(m), m.ias ? 'IAS ' + m.mph + ' mph' : 'curva');
   }
 
   // Average below the band (vector mean of the good rows, or of all if none is good) and the last one above it.
@@ -494,7 +502,7 @@
     if (meas) {
       $('wArrow').style.display = 'none';
       $('wRead').className = 'read';
-      $('wRead').innerHTML = '<span class="lab">Midiendo' + (meas.ias ? ' · IAS ' + meas.ias : ' · sin IAS') + '</span><span class="kt meas">' + Math.round(meas.hi - meas.lo) + '° de ' + targetOf(meas) + '°</span><span class="alt">Mantené la IAS y girá</span>';
+      $('wRead').innerHTML = '<span class="lab">Midiendo' + (meas.ias ? ' · IAS ' + meas.mph + ' mph' : ' · sin IAS') + '</span><span class="kt meas">' + Math.round(meas.hi - meas.lo) + '° de ' + targetOf(meas) + '°</span><span class="alt">Mantené la IAS y girá</span>';
     } else if (w) {
       $('wArrow').style.display = ''; $('wArrow').style.transform = 'rotate(' + w.from + 'deg)';
       $('wRose').classList.toggle('doubt', !w.ok);
