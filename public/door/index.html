@@ -37,13 +37,15 @@
   #standby { display: none; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
              padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
   #standby h1 { font-size: 1.2rem; margin: 0; color: var(--muted); }
-  #standby dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .95rem; margin: 0; }
-  #standby dt { color: var(--muted); }
-  #standby dd { margin: 0; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #1e1e1e; border: 2px solid #333; }
+  .tile svg { width: 30px; height: 30px; flex: none; }
+  .tile b { font-size: 1.6rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .tile.ok { border-color: var(--go); } .tile.ok svg { color: var(--go); }
+  .tile.no { border-color: var(--warn); } .tile.no svg { color: var(--warn); }
   #run { flex: 1; min-height: 55vh; margin: 0; border-radius: 24px; background: var(--go); font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1.05; font-weight: 900; }
   #edit { margin: 0; padding: 14px; font-size: 1rem; background: #2a2a2a linear-gradient(var(--brand), var(--brand)) no-repeat left / 0% 100%; border: 1px solid #444; }
   #edit.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
-  #sbPoint.none { color: var(--warn); }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -83,14 +85,12 @@
 
 <main id="standby">
   <h1>Stand by</h1>
-  <dl>
-    <dt>Punto de la 1ª salida</dt><dd id="sbPoint"></dd>
-    <dt>Separación</dt><dd id="sbGap"></dd>
-    <dt>Ground speed cargado</dt><dd id="sbGs"></dd>
-    <dt>GPS</dt><dd id="sbGps"></dd>
-    <dt>Distancia al punto</dt><dd id="sbDist"></dd>
-    <dt>Segundos entre salidas</dt><dd id="sbSecs"></dd>
-  </dl>
+  <div class="tiles">
+    <div class="tile" id="tPoint" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><b id="sbPoint"></b></div>
+    <div class="tile" id="tGps" role="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg><b id="sbGps"></b></div>
+    <div class="tile" role="img" aria-label="Ground speed cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l20-8-7 9-3-3-4 5v-5z"/></svg><b id="sbGs"></b></div>
+    <div class="tile" role="img" aria-label="Segundos entre salidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><b id="sbSecs"></b></div>
+  </div>
   <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
   <button class="btn" id="edit" type="button">Mantené apretado para cambiar la configuración</button>
 </main>
@@ -221,13 +221,15 @@
 
   function renderStandby() {
     const gs = groundSpeed();
-    $('sbPoint').textContent = cfg.point ? cfg.point.lat.toFixed(5) + ', ' + cfg.point.lon.toFixed(5) : 'SIN PUNTO (por tiempo)';
-    $('sbPoint').className = cfg.point ? '' : 'none';
-    $('sbGap').textContent = cfg.gap + ' m';
+    const gpsOn = !!pos && !gpsErr && Date.now() - posAt < POS_FRESH;
+    $('sbPoint').textContent = cfg.point ? 'Sí' : 'No';
+    $('tPoint').className = 'tile ' + (cfg.point ? 'ok' : 'no');
+    $('tPoint').setAttribute('aria-label', cfg.point ? 'Punto cargado' : 'Sin punto');
+    $('sbGps').textContent = gpsOn ? 'Sí' : 'No';
+    $('tGps').className = 'tile ' + (gpsOn ? 'ok' : 'no');
+    $('tGps').setAttribute('aria-label', 'GPS: ' + gpsText());
     $('sbGs').textContent = cfg.gs + ' kt';
-    $('sbGps').textContent = gpsText();
-    $('sbDist').textContent = cfg.point && pos ? (dist(pos, cfg.point) / 1000).toFixed(1).replace('.', ',') + ' km' : '–';
-    $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s (' + kt(gs.v) + ' kt, ' + gs.src + ')';
+    $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
   }
 
   // Changing the setup is exceptional: hold the button 1.5 s (the bar fills up).
