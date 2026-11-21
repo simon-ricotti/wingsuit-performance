@@ -28,7 +28,7 @@
   p.sub { color: var(--muted); margin: 0 0 16px; line-height: 1.4; }
   label { display: block; font-weight: 700; margin: 14px 0 6px; }
   label small { font-weight: 400; color: var(--muted); }
-  input { width: 100%; font: inherit; font-size: 1.15rem; padding: 12px; border-radius: 10px; border: 1px solid #444; background: #1e1e1e; color: var(--fg); }
+  input, select { width: 100%; font: inherit; font-size: 1.15rem; padding: 12px; border-radius: 10px; border: 1px solid #444; background: #1e1e1e; color: var(--fg); }
   .btn { display: block; width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font-size: 1.15rem; font-weight: 700; }
   .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
@@ -81,6 +81,13 @@
   <label for="gs">Ground speed si no hay GPS <small>(kt)</small></label>
   <input id="gs" inputmode="numeric" value="80">
 
+  <label for="unit">Distancia al punto en</label>
+  <select id="unit">
+    <option value="nm">Millas náuticas (nm)</option>
+    <option value="m">Metros (m / km)</option>
+    <option value="ft">Pies (ft)</option>
+  </select>
+
   <button class="btn secondary" id="gpsBtn" type="button">Activar el GPS</button>
   <p class="note" id="gpsLine">GPS: apagado. Activalo en tierra para que el celular pida el permiso.</p>
   <button class="btn" id="start" type="button">OK</button>
@@ -126,7 +133,7 @@
 
   // ---- Setup ----
   const saved = read(STORE);
-  if (saved) { $('point').value = saved.point || ''; $('gap').value = saved.gap || '600'; $('gs').value = saved.gs || '80'; }
+  if (saved) { $('point').value = saved.point || ''; $('gap').value = saved.gap || '600'; $('gs').value = saved.gs || '80'; $('unit').value = saved.unit || 'nm'; }
   // From the planner: "lat, lon, separation, ground speed" by copy and paste (an installed app on iPhone does not share
   // storage with the browser); in the same browser, the stored plan is the fallback.
   function fill(text) {
@@ -206,7 +213,16 @@
 
   // ---- Clock ----
   // `ready`: the counter reached zero (or the first point), so a tap counts as an exit. Nobody exits before that.
-  let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, timer = null, buzzed = false, ready = false;
+  let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, passed = false, timer = null, buzzed = false, ready = false;
+  // Seconds as s up to a minute, then m:ss.
+  const secs = (n) => n < 60 ? n + ' s' : Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
+  // Distance in the chosen unit: m (km from 1000 m), ft, or nm with one decimal.
+  const dec = (n) => n.toFixed(1).replace('.', ',');
+  function distText(d) {
+    if (cfg.unit === 'm') return d < 1000 ? Math.round(d) + ' m' : dec(d / 1000) + ' km';
+    if (cfg.unit === 'ft') return Math.round(d / 0.3048).toLocaleString('es-AR') + ' ft';
+    return dec(d / 1852) + ' nm';
+  }
 
   $('start').onclick = () => {
     const gap = num($('gap').value), gs = num($('gs').value), ptxt = $('point').value.trim();
@@ -218,8 +234,8 @@
     }
     if (!(gap > 0) || !(gs > 0)) { $('err').textContent = 'Completá la separación y el ground speed con números.'; return; }
     $('err').textContent = '';
-    write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value });
-    cfg = { point, gap, gs };
+    write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value, unit: $('unit').value });
+    cfg = { point, gap, gs, unit: $('unit').value };
     startGps(); wake();
     show('standby');
     clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
@@ -241,7 +257,7 @@
     $('sbGs').textContent = (real != null ? kt(real) : cfg.gs) + ' kt';
     $('tGs').className = 'tile' + (real != null ? ' ok' : '');
     $('tGs').setAttribute('aria-label', 'Ground speed ' + (real != null ? 'real (GPS)' : 'cargado'));
-    $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
+    $('sbSecs').textContent = secs(Math.ceil(cfg.gap / gs.v));
     $('tSecs').className = 'tile' + (gs.src === 'GPS' ? ' ok' : '');
   }
 
@@ -264,7 +280,7 @@
   });
   holdButton($('edit'), () => { clearInterval(timer); show('setup'); });
   $('run').onclick = () => {
-    exits = []; minDist = Infinity; running = true; buzzed = false; ready = false;
+    exits = []; minDist = Infinity; passed = false; running = true; buzzed = false; ready = false;
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
     show('clock');
     clearInterval(timer); timer = setInterval(render, 100); render();
@@ -314,11 +330,12 @@
       if (cfg.point && pos && now - posAt < POS_FRESH) {
         const d = dist(pos, cfg.point);
         minDist = Math.min(minDist, d);
-        const passed = d < 400 && d > minDist + 40; // was closer and is moving away
         const eta = d / gs.v;
-        if (passed || eta <= 0.5) { ready = true; setState('go'); $('big').textContent = 'YA'; }
-        else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); }
-        chips = chip('pin', Math.round(d) + ' m', 'Distancia al punto', 'ok') + speed;
+        // Over the point, or was closer and is moving away: from then on the distance counts how far past it is (+).
+        if (eta <= 0.5 || (d < 400 && d > minDist + 40)) passed = true;
+        if (passed) { ready = true; setState('go'); $('big').textContent = 'YA'; }
+        else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = secs(Math.ceil(eta)); }
+        chips = chip('pin', (passed ? '+' : '') + distText(d), passed ? 'Pasado del punto' : 'Distancia al punto', 'ok') + speed;
       } else {
         ready = true;
         setState(''); $('big').textContent = '1ª';
@@ -328,7 +345,7 @@
       const since = (now - last.t) / 1000, left = last.target - since;
       if (left > 0) {
         setState(left <= 3 ? 'warn' : '');
-        $('big').textContent = String(Math.ceil(left));
+        $('big').textContent = secs(Math.ceil(left));
       } else {
         ready = true;
         // Late: green at zero, red after 5 s more to hurry up.
@@ -336,9 +353,11 @@
         $('big').textContent = 'YA';
         if (!buzzed) { buzzed = true; try { navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch { /* ignore */ } }
       }
-      chips = chip('since', Math.floor(since) + ' s', 'Segundos desde la última salida (5.5.9)') + speed;
+      chips = chip('since', secs(Math.floor(since)), 'Segundos desde la última salida (5.5.9)') + speed;
     }
     $('chips').innerHTML = chips + (ready ? chip('tap', '', 'Tocá la pantalla al salir') : '');
+    // m:ss (4+ characters) needs a smaller size to fit the width of a phone.
+    $('big').style.fontSize = $('big').textContent.length > 2 ? 'min(34vw, 40vh)' : '';
   }
 
 
