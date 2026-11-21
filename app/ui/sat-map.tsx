@@ -111,11 +111,18 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
     }
 
     if (jumpRun) {
-      // Planning aid: approximate lanes from the middle of the jump run to each point (the real lane starts at the validation, 2.2).
+      // Planning aid: exit N flies to point N (cycling when there are more exits than points). Approximate lanes from
+      // the exit; the real lane starts at the validation (2.2).
+      const slots = exitSlots(jumpRun, exitGap);
       const mid = { lat: (jumpRun.a.lat + jumpRun.b.lat) / 2, lon: (jumpRun.a.lon + jumpRun.b.lon) / 2 };
-      for (const r of refs) for (const c of corridor(mid, r, half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
+      if (refs.length) slots.forEach(([lat, lon], i) => {
+        for (const c of corridor({ lat, lon }, refs[i % refs.length], half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
+      });
       Lf.polyline([[jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]], { color: '#fff', weight: 3, dashArray: '8 6' }).addTo(g).bindTooltip('Pasada');
-      exitSlots(jumpRun, exitGap).forEach((s, i) => Lf.circleMarker(s, { radius: 5, color: '#701968', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g).bindTooltip(`Salida ${i + 1} (cada ${exitGap} m, 5.5.4)`));
+      slots.forEach((s, i) => {
+        const to = refs.length ? ` → ${refs[i % refs.length].name || `Punto ${(i % refs.length) + 1}`}` : '';
+        Lf.circleMarker(s, { radius: 5, color: '#701968', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g).bindTooltip(`Salida ${i + 1}${to} (cada ${exitGap} m, 5.5.4)`);
+      });
       if (landing) Lf.polyline([[mid.lat, mid.lon], [landing.lat, landing.lon]], { color: '#fff', weight: 1, opacity: 0.8, dashArray: '2 6', interactive: false }).addTo(g);
       bounds.push([jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]);
     }

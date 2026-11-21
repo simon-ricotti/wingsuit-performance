@@ -102,7 +102,7 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
         <Link href="/jump-run" className="small">Calcular la pasada con el viento</Link>
       </div>
       <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={600} fitKey={String(fit)} />
-      <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de 600 m desde el centro de la pasada a cada punto; el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
+      <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de 600 m desde cada salida a su punto (la salida 1 al punto 1, la 2 al 2, y así); el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento
         FAI 2026. La unidad elegida se usa para cargar y mostrar las alturas de esta jornada; los resultados siguen en segundos, metros y km/h.</p>
 

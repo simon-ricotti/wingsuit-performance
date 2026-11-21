@@ -56,9 +56,13 @@ export function Planner() {
     // Flying a track across the wind, the plane crabs: ground speed = √(TAS² − W²).
     const gs = Math.sqrt(tas * tas - w * w) * KT;
     const secs = Math.ceil(gap / gs); // rounded up so the separation is never under `gap`
-    const centre = back(cx, cy);
-    const dist = (p: LatLon) => { const q = projector(centre.lat, centre.lon)(p.lat, p.lon); return Math.hypot(q[0], q[1]); };
-    return { run, heading, gs, secs, length: half * 2, gap, refDist: refs.map(dist) };
+    // Exit N flies to point N (as the map draws it): distance from that exit.
+    const refDist = refs.map((r, j) => {
+      if (j >= exits) return null;
+      const q = pr(r.lat, r.lon), ex = cx - hx * half + hx * gap * j, ey = cy - hy * half + hy * gap * j;
+      return Math.hypot(q[0] - ex, q[1] - ey);
+    });
+    return { run, heading, gs, secs, length: half * 2, gap, refDist };
   }, [inp, landing, refs]);
 
   // Save after every change, once the stored plan was read.
@@ -148,7 +152,7 @@ export function Planner() {
       )}
 
       <h2>Mapa</h2>
-      <p className="sub small">Arrastrá el cuadrado naranja al área de aterrizaje. Tocá el mapa para agregar puntos de referencia y arrastralos para moverlos. Los círculos son las salidas y las franjas celestes, un carril aproximado de 600 m desde el centro de la pasada.</p>
+      <p className="sub small">Arrastrá el cuadrado naranja al área de aterrizaje. Tocá el mapa para agregar puntos de referencia y arrastralos para moverlos. Los círculos son las salidas: la salida 1 va al punto 1, la 2 al punto 2, y así (si hay más salidas que puntos, se vuelve a empezar). Las franjas celestes son un carril aproximado de 600 m desde cada salida hasta su punto.</p>
       <SatMap refs={refs} onRefsChange={setRefs} jumpRun={'run' in plan ? plan.run : null} landing={landing} onLandingChange={setLanding} exitGap={'gap' in plan ? plan.gap : 600} height={480}
         fitKey={`${inp.windFrom}|${inp.side}|${inp.upwind}|${inp.exits}`} />
       {refs.length > 0 && (
@@ -156,7 +160,7 @@ export function Planner() {
           {refs.map((r, i) => (
             <li key={i} className="row">
               <input aria-label={`Nombre del punto ${i + 1}`} value={r.name ?? ''} onChange={(e) => setRefs(refs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ maxWidth: 160 }} />
-              <span className="small muted">{plan.refDist?.[i] != null ? `${(plan.refDist[i] / 1000).toFixed(1).replace('.', ',')} km del centro de la pasada` : ''}</span>
+              <span className="small muted">{plan.refDist?.[i] != null ? `Salida ${i + 1}: a ${(plan.refDist[i]! / 1000).toFixed(1).replace('.', ',')} km` : 'Sin salida asignada'}</span>
               <button type="button" className="secondary" onClick={() => setRefs(refs.filter((_, j) => j !== i))}>Quitar</button>
             </li>
           ))}
