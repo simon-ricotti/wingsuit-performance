@@ -30,6 +30,12 @@
   .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
   .err { color: #ff8a8a; margin-top: 10px; }
+  /* Stand by */
+  #standby { display: none; max-width: 520px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 32px; }
+  #standby dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; font-size: 1.25rem; margin: 16px 0; }
+  #standby dt { color: var(--muted); }
+  #standby dd { margin: 0; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+  .btn.go { background: var(--go); font-size: 1.4rem; padding: 22px; }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: manipulation; }
@@ -59,10 +65,25 @@
   <label for="gs">Ground speed si no hay GPS <small>(kt)</small></label>
   <input id="gs" inputmode="numeric" value="80">
 
-  <button class="btn" id="start" type="button">Empezar</button>
+  <button class="btn" id="start" type="button">OK</button>
   <p class="err" id="err" role="alert"></p>
   <p class="note">Con GPS (cerca de la ventana) usa el ground speed real; si no, el que cargues. Cada toque en la pantalla marca una salida y vuelve a calcular los segundos con el ground speed de ese momento. Es una ayuda: la decisión de salir es de cada piloto (FAI 5.5.9).</p>
   <p class="note" id="gpsNote"></p>
+</main>
+
+<main id="standby">
+  <h1>Stand by</h1>
+  <p class="sub">Revisá que esté todo bien mientras suben. Al empezar la pasada, tocá <b>Iniciar jump run</b>.</p>
+  <dl>
+    <dt>Punto de la 1ª salida</dt><dd id="sbPoint"></dd>
+    <dt>Separación</dt><dd id="sbGap"></dd>
+    <dt>Ground speed cargado</dt><dd id="sbGs"></dd>
+    <dt>GPS</dt><dd id="sbGps"></dd>
+    <dt>Distancia al punto</dt><dd id="sbDist"></dd>
+    <dt>Segundos entre salidas</dt><dd id="sbSecs"></dd>
+  </dl>
+  <button class="btn go" id="run" type="button">Iniciar jump run</button>
+  <button class="btn secondary" id="edit" type="button">Cambiar la configuración</button>
 </main>
 
 <section id="clock" aria-live="polite">
@@ -107,7 +128,7 @@
   }
 
   // ---- GPS ----
-  let pos = null, gpsGs = null, gpsAt = 0, prev = null, watch = null;
+  let pos = null, posAt = 0, gpsGs = null, gpsAt = 0, prev = null, watch = null;
   function startGps() {
     if (!('geolocation' in navigator) || watch != null) return;
     watch = navigator.geolocation.watchPosition((p) => {
@@ -115,7 +136,7 @@
       let v = p.coords.speed;
       if ((v == null || isNaN(v)) && prev && now - prev.t > 500) v = dist(prev.p, here) / ((now - prev.t) / 1000);
       prev = { p: here, t: now };
-      pos = here;
+      pos = here; posAt = now;
       if (v != null && isFinite(v)) { gpsGs = v; gpsAt = now; }
     }, (e) => { $('gpsNote').textContent = 'GPS: ' + (e.code === 1 ? 'sin permiso; se usa el ground speed cargado.' : 'sin señal por ahora.'); },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
@@ -132,7 +153,8 @@
   document.addEventListener('visibilitychange', () => { if (running) wake(); });
 
   // ---- Clock ----
-  let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, timer = null, buzzed = false;
+  // `ready`: the counter reached zero (or the first point), so a tap counts as an exit. Nobody exits before that.
+  let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, timer = null, buzzed = false, ready = false;
 
   $('start').onclick = () => {
     const gap = num($('gap').value), gs = num($('gs').value), ptxt = $('point').value.trim();
@@ -146,11 +168,29 @@
     $('err').textContent = '';
     write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value });
     cfg = { point, gap, gs };
-    exits = []; minDist = Infinity; running = true; buzzed = false;
     startGps(); wake();
+    show('standby');
+    clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
+  };
+
+  function show(id) { for (const k of ['setup', 'standby', 'clock']) $(k).style.display = k === id ? (k === 'clock' ? 'flex' : 'block') : 'none'; }
+
+  function renderStandby() {
+    const gs = groundSpeed(), gpsOk = gpsGs != null && Date.now() - gpsAt < 5000;
+    $('sbPoint').textContent = cfg.point ? cfg.point.lat.toFixed(5) + ', ' + cfg.point.lon.toFixed(5) : 'Sin punto (por tiempo)';
+    $('sbGap').textContent = cfg.gap + ' m';
+    $('sbGs').textContent = cfg.gs + ' kt';
+    $('sbGps').textContent = pos ? (gpsOk ? kt(gpsGs) + ' kt' : 'con posición') : 'sin señal';
+    $('sbDist').textContent = cfg.point && pos ? (dist(pos, cfg.point) / 1000).toFixed(1).replace('.', ',') + ' km' : '–';
+    $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s (' + kt(gs.v) + ' kt, ' + gs.src + ')';
+  }
+
+  $('edit').onclick = () => { clearInterval(timer); show('setup'); };
+  $('run').onclick = () => {
+    exits = []; minDist = Infinity; running = true; buzzed = false; ready = false;
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
-    $('setup').style.display = 'none'; $('clock').style.display = 'flex';
-    timer = setInterval(render, 100); render();
+    show('clock');
+    clearInterval(timer); timer = setInterval(render, 100); render();
   };
 
   $('stop').onclick = (e) => {
@@ -158,20 +198,20 @@
     running = false; clearInterval(timer);
     try { lock && lock.release(); } catch { /* ignore */ }
     try { document.fullscreenElement && document.exitFullscreen(); } catch { /* ignore */ }
-    $('clock').style.display = 'none'; $('setup').style.display = 'block';
+    show('setup');
   };
   $('undo').onclick = (e) => {
     e.stopPropagation();
     exits.pop();
-    if (exits.length) target = exits[exits.length - 1].target;
     buzzed = false; render();
   };
 
-  // A tap anywhere marks an exit (ignoring a second tap within 1.5 s).
+  // A tap anywhere marks an exit, only once the counter is at zero.
   $('clock').addEventListener('pointerdown', (e) => {
     if (e.target.closest('button')) return;
-    const now = Date.now(), last = exits[exits.length - 1];
-    if (last && now - last.t < 1500) return;
+    render();
+    if (!ready) return;
+    const now = Date.now();
     const gs = groundSpeed();
     target = Math.ceil(cfg.gap / gs.v); // rounded up: never under the separation
     exits.push({ t: now, target, gs });
@@ -184,20 +224,22 @@
   function render() {
     if (!running) return;
     const now = Date.now(), gs = groundSpeed(), last = exits[exits.length - 1];
+    ready = false;
     if (!last) {
-      // Before the first exit: by the point (GPS), or waiting for the first tap.
+      // Before the first exit: by the point (GPS). Without a point or without GPS, the first tap is free.
       $('label').textContent = 'PRIMERA SALIDA';
-      if (cfg.point && pos) {
+      if (cfg.point && pos && Date.now() - posAt < 10000) {
         const d = dist(pos, cfg.point);
         minDist = Math.min(minDist, d);
         const passed = d < 400 && d > minDist + 40; // was closer and is moving away
         const eta = d / gs.v;
-        if (passed || eta <= 0.5) { setState('go'); $('big').textContent = 'YA'; $('info').textContent = passed ? 'Pasaron el punto' : 'Sobre el punto'; }
+        if (passed || eta <= 0.5) { ready = true; setState('go'); $('big').textContent = 'YA'; $('info').textContent = passed ? 'Pasaron el punto' : 'Sobre el punto'; }
         else { setState(eta <= 5 ? 'warn' : ''); $('big').textContent = String(Math.ceil(eta)); $('info').textContent = Math.round(d) + ' m al punto · ' + kt(gs.v) + ' kt (' + gs.src + ')'; }
-        $('hint').textContent = 'Tocá la pantalla al salir';
+        $('hint').textContent = ready ? 'Tocá la pantalla al salir' : 'Se puede tocar al llegar al punto';
       } else {
+        ready = true;
         setState(''); $('big').textContent = '1ª';
-        $('info').textContent = cfg.point ? 'Esperando el GPS…' : 'Sin punto: arranca con la primera salida';
+        $('info').textContent = cfg.point ? (pos ? 'Se perdió el GPS: tocá al salir' : 'Sin GPS todavía: tocá al salir') : 'Sin punto: arranca con la primera salida';
         $('hint').textContent = 'Tocá la pantalla cuando salga el primero';
       }
       return;
@@ -208,13 +250,14 @@
       setState(left <= 3 ? 'warn' : '');
       $('big').textContent = String(Math.ceil(left));
     } else {
+      ready = true;
       // Late: green at zero, red after 5 s more to hurry up.
       setState(-left > 5 ? 'late' : 'go');
       $('big').textContent = 'YA';
       if (!buzzed) { buzzed = true; try { navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch { /* ignore */ } }
     }
     $('info').textContent = cfg.gap + ' m a ' + kt(last.gs.v) + ' kt (' + last.gs.src + ') = ' + last.target + ' s · desde la última: ' + Math.floor(since) + ' s';
-    $('hint').textContent = 'Ahora: ' + kt(gs.v) + ' kt (' + gs.src + ') · tocá la pantalla al salir';
+    $('hint').textContent = 'Ahora: ' + kt(gs.v) + ' kt (' + gs.src + ') · ' + (ready ? 'tocá la pantalla al salir' : 'se puede tocar en cero');
   }
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
