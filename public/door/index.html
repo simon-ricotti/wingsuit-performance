@@ -44,8 +44,10 @@
   .tile.ok { border-color: var(--go); } .tile.ok svg { color: var(--go); }
   .tile.no { border-color: var(--warn); } .tile.no svg { color: var(--warn); }
   #run { flex: 1; min-height: 55vh; margin: 0; border-radius: 24px; background: var(--go); font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1.05; font-weight: 900; }
-  #edit { margin: 0; padding: 14px; font-size: 1rem; background: #2a2a2a linear-gradient(var(--brand), var(--brand)) no-repeat left / 0% 100%; border: 1px solid #444; }
-  #edit.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
+  #edit { margin: 0; padding: 14px; font-size: 1rem; background-color: #2a2a2a; border: 1px solid #444; }
+  /* Hold-to-confirm buttons: the bar fills up while pressed. */
+  #edit, #stop { background-image: linear-gradient(var(--brand), var(--brand)); background-repeat: no-repeat; background-position: left; background-size: 0% 100%; }
+  #edit.hold, #stop.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -100,7 +102,7 @@
 <section id="clock" aria-live="polite">
   <div class="bar">
     <span></span>
-    <button id="stop" type="button">Terminar</button>
+    <button id="stop" type="button">Mantené para terminar</button>
   </div>
   <div id="label" aria-label="Salida"></div>
   <div id="big">1ª</div>
@@ -233,34 +235,29 @@
     $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
   }
 
-  // Changing the setup is exceptional: hold the button 1.5 s (the bar fills up).
-  let holdT = null;
-  const holdEnd = () => { clearTimeout(holdT); $('edit').classList.remove('hold'); };
-  $('edit').addEventListener('pointerdown', () => {
-    $('edit').classList.add('hold');
-    holdT = setTimeout(() => { holdEnd(); clearInterval(timer); show('setup'); }, 1500);
+  // Exceptional actions (end the jump run, change the setup): hold the button 1.5 s while the bar fills up.
+  function holdButton(el, action) {
+    let t = null;
+    const end = () => { clearTimeout(t); el.classList.remove('hold'); };
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      el.classList.add('hold');
+      t = setTimeout(() => { end(); action(); }, 1500);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, end);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  holdButton($('stop'), () => {
+    running = false;
+    clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
+    show('standby');
   });
-  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('edit').addEventListener(ev, holdEnd);
-  $('edit').addEventListener('contextmenu', (e) => e.preventDefault());
+  holdButton($('edit'), () => { clearInterval(timer); show('setup'); });
   $('run').onclick = () => {
     exits = []; minDist = Infinity; running = true; buzzed = false; ready = false;
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch { /* optional */ }
     show('clock');
     clearInterval(timer); timer = setInterval(render, 100); render();
-  };
-
-  // Ending needs a second tap within 3 s (no dialogs on the plane); it goes back to stand by.
-  let stopArmed = 0;
-  $('stop').onclick = (e) => {
-    e.stopPropagation();
-    if (Date.now() - stopArmed > 3000) {
-      stopArmed = Date.now(); $('stop').textContent = '¿Terminar? Tocá de nuevo';
-      setTimeout(() => { $('stop').textContent = 'Terminar'; }, 3000);
-      return;
-    }
-    running = false; $('stop').textContent = 'Terminar';
-    clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
-    show('standby');
   };
 
   // A tap anywhere marks an exit, only once the counter is at zero.
