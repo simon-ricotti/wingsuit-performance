@@ -189,7 +189,9 @@
   $('gpsBtn').onclick = startGps;
   // If the permission was already given, turn it on by itself.
   try { navigator.permissions.query({ name: 'geolocation' }).then((r) => { if (r.state === 'granted') startGps(); }); } catch { /* old browser */ }
-  // GPS speed only if recent and the plane is flying (over ~30 kt); otherwise the typed one.
+  // What the screens show: the GPS speed whenever there is a recent one (even on the ground), else null.
+  function realSpeed() { return gpsGs != null && Date.now() - gpsAt < 5000 ? gpsGs : null; }
+  // What the countdown uses: GPS speed only if the plane is flying (over ~30 kt); otherwise the typed one.
   function groundSpeed() {
     if (gpsGs != null && Date.now() - gpsAt < 5000 && gpsGs > 15) return { v: gpsGs, src: 'GPS' };
     return { v: cfg.gs * KT, src: 'manual' };
@@ -233,9 +235,10 @@
     $('tGps').className = 'tile ' + (gpsOn ? 'ok' : 'no');
     $('tGps').setAttribute('aria-label', 'GPS: ' + gpsText());
     // Real ground speed (GPS, plane flying) in green; otherwise the typed one.
-    $('sbGs').textContent = kt(gs.v) + ' kt';
-    $('tGs').className = 'tile' + (gs.src === 'GPS' ? ' ok' : '');
-    $('tGs').setAttribute('aria-label', 'Ground speed ' + (gs.src === 'GPS' ? 'real (GPS)' : 'cargado'));
+    const real = realSpeed();
+    $('sbGs').textContent = (real != null ? kt(real) : cfg.gs) + ' kt';
+    $('tGs').className = 'tile' + (real != null ? ' ok' : '');
+    $('tGs').setAttribute('aria-label', 'Ground speed ' + (real != null ? 'real (GPS)' : 'cargado'));
     $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s';
   }
 
@@ -291,13 +294,14 @@
     tap: I('<path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v2M17 11a2 2 0 0 1 4 0v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4 14a2 2 0 0 1 3.3-2.2L9 14"/>'),
   };
   // state: 'ok' (green: GPS on, point loaded, real ground speed), 'off' (dimmed) or nothing.
-  const chip = (icon, text, label, state) => '<span' + (state ? ' class="' + state + '"' : '') + ' aria-label="' + label + '">' + ICON[icon] + (text || '') + '</span>';
+  const chip = (icon, text, label, state) => '<span' + (state ? ' class="' + state + '"' : '') + ' aria-label="' + label + '">' + ICON[icon] + (text == null ? '' : text) + '</span>';
 
   function render() {
     if (!running) return;
     const now = Date.now(), gs = groundSpeed(), last = exits[exits.length - 1];
     const gpsOn = !!pos && !gpsErr && now - posAt < POS_FRESH;
-    const speed = chip('plane', kt(gs.v), 'Ground speed ' + kt(gs.v) + ' kt' + (gs.src === 'GPS' ? ' (GPS)' : ' (cargado)'), gs.src === 'GPS' ? 'ok' : '')
+    const real = realSpeed(), shown = real != null ? kt(real) : cfg.gs;
+    const speed = chip('plane', shown, 'Ground speed ' + shown + ' kt' + (real != null ? ' (GPS)' : ' (cargado)'), real != null ? 'ok' : '')
       + chip('gps', '', gpsOn ? 'GPS activo' : 'Sin GPS', gpsOn ? 'ok' : 'off');
     ready = false;
     $('label').innerHTML = ICON.jumper + (exits.length + 1);
