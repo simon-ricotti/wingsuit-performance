@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- Help of the door clock: self-contained and cached by the service worker, so it can be read offline on the plane. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<link rel="icon" href="icon.svg">
+<title>Ayuda del reloj</title>
+<style>
+  :root { --bg: #121212; --fg: #f2f2f2; --muted: #b9b9b9; --brand: #c45bb7; --go: #3ddc84; --warn: #f0b354; --card: #1e1e1e; --line: #333; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 48px; }
+  a { color: var(--brand); }
+  .back { display: inline-block; margin-bottom: 8px; padding: 10px 14px; border-radius: 10px; background: #2a2a2a; border: 1px solid #444; color: #fff; text-decoration: none; font-weight: 700; }
+  h1 { font-size: 1.6rem; margin: 8px 0; }
+  h2 { font-size: 1.2rem; margin: 28px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1rem; margin: 18px 0 6px; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; }
+  .flow span { padding: 6px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); font-weight: 700; }
+  .flow i { color: var(--muted); font-style: normal; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
+  .green { color: var(--go); font-weight: 700; } .yellow { color: var(--warn); font-weight: 700; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  nav a { padding: 6px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); text-decoration: none; color: var(--fg); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← Volver al reloj</a>
+  <h1>Ayuda del reloj</h1>
+  <nav>
+    <a href="#instalar">Instalar</a><a href="#config">Configurar</a><a href="#standby">Stand by</a><a href="#pasada">Pasada</a><a href="#viento">Viento</a><a href="#problemas">Problemas</a>
+  </nav>
+
+  <div class="flow"><span>Configurar</span><i>→ OK →</i><span>Stand by</span><i>→</i><span>Iniciar jump run</span><i>→ mantener →</i><span>Stand by</span></div>
+  <p>Los botones de acciones poco frecuentes (terminar, cambiar la configuración, modo viento, borrar, volver) se <b>mantienen apretados</b> un momento hasta que se llenan de color, para que no se toquen sin querer.</p>
+
+  <h2 id="instalar">Instalar y dejarlo listo</h2>
+  <ul>
+    <li><b>iPhone:</b> en <b>Safari</b> (no Chrome), Compartir → <b>Agregar a inicio</b>.</li>
+    <li><b>Android:</b> en Chrome, menú ⋮ → <b>Instalar app</b>.</li>
+    <li>Abrilo una vez con señal y tocá <b>Activar el GPS</b> → permitir la ubicación. Desde ahí anda sin internet (salvo el mapa para elegir el punto).</li>
+    <li>Antes de subir: <b>No molestar</b>. Para que nadie salga de la app: Acceso guiado (iPhone) o Fijar pantalla (Android).</li>
+  </ul>
+
+  <h2 id="config">Configurar</h2>
+  <ul>
+    <li><b>Punto de la 1ª salida:</b> <i>Elegir en el mapa</i> (necesita señal), o en <i>Pasada</i> de la página tocá <i>Copiar para el reloj</i> y acá <i>Pegar lo copiado en Pasada</i> (trae también separación y ground speed). Vacío: arranca solo por tiempo.</li>
+    <li><b>Separación:</b> botones rápidos. Wingsuit FAI 600 m (5.5.4); USPA 1000 ft entre solos y 1500 ft entre grupos chicos, más con grupos grandes o mucho viento en altura (SIM 4-7).</li>
+    <li><b>Ground speed si no hay GPS:</b> solo se usa sin señal o con el avión quieto.</li>
+    <li><b>Distancia al punto en:</b> millas náuticas, metros/km o pies.</li>
+    <li><b>Viento promedio hasta (ft):</b> la franja baja del modo viento (por defecto 5.000 ft).</li>
+    <li><b>Temperatura en tierra:</b> opcional; mejora el cálculo de la TAS cuando se mide el viento con IAS.</li>
+  </ul>
+
+  <h2 id="standby">Stand by</h2>
+  <p>Cuatro recuadros: punto cargado, GPS, ground speed y segundos entre salidas. <span class="green">En verde</span> lo que viene del GPS (real); sin verde, lo cargado a mano. Con el avión quieto los segundos usan el ground speed cargado.</p>
+  <p>Debajo: el botón grande <b>Iniciar jump run</b>, y los de mantener para el <b>modo viento</b> y para <b>cambiar la configuración</b>.</p>
+
+  <h2 id="pasada">Pasada</h2>
+  <ol>
+    <li><b>Primera salida:</b> cuenta los segundos hasta la vertical del punto y la distancia. Amarillo en los últimos 5 s, <b>YA</b> en verde al llegar. Después sigue mostrando cuánto se pasaron, con <b>+</b>.</li>
+    <li>La pantalla solo acepta el toque en <b>YA</b> (aparece la mano 👆). Sin GPS, la primera salida queda libre.</li>
+    <li>Cada toque marca una salida y cuenta los segundos para la siguiente con el ground speed real de ese momento: amarillo en los últimos 3 s, verde en cero, rojo si pasan 5 s más.</li>
+    <li>Arriba, el número de salida; abajo, los segundos desde la última salida (reloj de puerta FAI 5.5.9), el ground speed y el GPS.</li>
+    <li>Es una ayuda: la decisión de salir es de cada uno.</li>
+  </ol>
+
+  <h2 id="viento">Modo viento</h2>
+  <p>Arriba, siempre: el <b>promedio de 0 a 5.000 ft</b> y el último viento <b>arriba de 5.000 ft</b>. En el medio, la rosa con la última medición: la flecha sale de donde viene el viento. Abajo, la tabla con todas.</p>
+
+  <h3>Cómo se mide</h3>
+  <p>Cuando el avión cambia de rumbo a velocidad constante, el ground speed cambia: de esa diferencia sale el viento. Una recta sola no alcanza: hace falta una curva.</p>
+  <div class="box">
+    <p><b>Con IAS fija (lo más práctico):</b></p>
+    <ol>
+      <li>Cuando el piloto avise que va a IAS fija, tocá <b>Medir</b> y elegí la IAS (70 a 95 kt).</li>
+      <li>Alcanza con una curva normal de <b>unos 75°</b>. El anillo se llena con el giro y la medición termina sola.</li>
+      <li>La app pasa la IAS a TAS con la altura del GPS (y la temperatura en tierra, si la cargaste).</li>
+    </ol>
+    <p><b>Sin IAS conocida:</b> <b>Medir</b> → <b>No sé</b>. Hace falta una curva de <b>200° o más</b> (por ejemplo, una curva de un hipódromo) a velocidad constante.</p>
+    <p><b>Sin tocar nada:</b> un 360 o un hipódromo completo (dos curvas de 180° con rectas, en menos de 5 minutos) se detectan solos.</p>
+  </div>
+  <ul>
+    <li><b>Terminar la medición</b> corta antes: si giró lo mínimo (45° con IAS, 150° sin IAS) se guarda como <span class="yellow">dudosa</span>; si no, avisa y no guarda.</li>
+    <li><span class="yellow">En amarillo</span>: medición dudosa (la velocidad cambió, el giro fue corto o irregular). El promedio de la franja baja usa las buenas; si no hay ninguna, usa las dudosas y lo marca.</li>
+    <li>Cada fila dice cómo se midió: <i>IAS 85</i>, <i>curva</i> o <i>giro</i> (360 o hipódromo detectado solo).</li>
+    <li>La altura es la del GPS, <b>sobre el nivel del mar</b> (en AVA son ~85 ft más que sobre el suelo).</li>
+    <li>Precisión esperable: 1–2 kt y unos grados, si la IAS se mantiene. Si la IAS varía 5 kt, el viento sale corrido más o menos lo mismo.</li>
+    <li><b>Mantené para borrar</b> limpia las mediciones para la próxima subida.</li>
+  </ul>
+
+  <h2 id="problemas">Problemas frecuentes</h2>
+  <ul>
+    <li><b>El GPS no se pone en verde:</b> acercá el celular a la ventana; revisá que la ubicación esté permitida para esta app (iPhone: Ajustes → Privacidad → Localización).</li>
+    <li><b>No pude elegir el punto en el mapa:</b> el mapa necesita señal; pegá o escribí el punto.</li>
+    <li><b>Una versión vieja:</b> abrí la app una vez con señal y se actualiza sola.</li>
+    <li><b>En iPhone, “Pegar lo copiado” no trae nada:</b> aceptá el permiso de pegar; la app instalada no comparte datos con Safari.</li>
+  </ul>
+  <p><a class="back" href="index.html">← Volver al reloj</a></p>
+</main>
+</body>
+</html>

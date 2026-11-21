@@ -18,6 +18,7 @@
 <style>
   :root { --bg: #121212; --fg: #fff; --muted: #b9b9b9; --brand: #9b2a8f; --warn: #f0b354; --go: #1f9d55; --late: #d63c3c; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   html { touch-action: pan-x pan-y; } /* no pinch zoom */
   body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -32,6 +33,7 @@
   .btn { display: block; width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font-size: 1.15rem; font-weight: 700; }
   .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
   .btn:disabled { opacity: .4; }
+  a.btn { text-align: center; text-decoration: none; }
   .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
   .presets button { padding: 10px 4px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: var(--fg); font-size: .85rem; line-height: 1.3; }
   .presets button b { font-size: 1.05rem; }
@@ -73,6 +75,7 @@
   .read { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-variant-numeric: tabular-nums; }
   .read .from { font-size: clamp(2.6rem, 13vw, 4rem); font-weight: 900; line-height: 1; }
   .read .kt { font-size: clamp(2rem, 10vw, 3rem); font-weight: 900; line-height: 1.05; }
+  .read .meas { font-size: clamp(1.6rem, 8vw, 2.4rem); white-space: nowrap; }
   .read .alt { font-size: 1.1rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
   .read .lab { font-size: .85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
   .read .hint { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
@@ -89,6 +92,18 @@
   #wList th:first-child, #wList td:first-child { text-align: left; }
   #wList tr.doubt td { color: var(--warn); }
   #wList .mini { width: 1em; height: 1em; vertical-align: -.12em; margin-right: 4px; }
+  .sum { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sum > div { background: #1e1e1e; border: 2px solid #333; border-radius: 14px; padding: 8px 12px; font-variant-numeric: tabular-nums; }
+  .sum .lab { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .sum .v { font-size: 1.6rem; font-weight: 900; line-height: 1.1; }
+  .sum .s { font-size: .9rem; color: var(--muted); font-weight: 700; }
+  .sum .doubt .v { color: var(--warn); }
+  #wMeasure { margin: 0; padding: 18px; font-size: 1.4rem; font-weight: 900; }
+  #wStop { margin: 0; padding: 18px; font-size: 1.2rem; background: var(--warn); color: #111; }
+  .ias { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .ias button { padding: 14px 4px; border-radius: 12px; border: 1px solid #444; background: #2a2a2a; color: #fff; font-size: 1.3rem; font-weight: 900; }
+  .ias button[data-ias=""], #wIasNo { font-size: 1rem; }
+  #wList td small { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; }
   .wbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .wbtns .btn { margin: 0; padding: 14px; font-size: .95rem; }
   /* Clock */
@@ -112,6 +127,7 @@
 <main id="setup">
   <h1>Reloj de puerta</h1>
   <p class="sub">Cuenta regresiva para salir del avión: la primera salida por el punto, las demás por tiempo según la separación y el ground speed. Funciona sin internet: abrila una vez con señal y agregala a la pantalla de inicio.</p>
+  <a class="btn secondary" href="help.html">¿Cómo se usa? Ayuda del reloj</a>
 
   <label for="point">Punto de la 1ª salida <small>(latitud, longitud; vacío = arrancar por tiempo)</small></label>
   <input id="point" inputmode="decimal" placeholder="Pegá o escribí: latitud, longitud">
@@ -141,6 +157,11 @@
     <option value="ft">Pies (ft)</option>
   </select>
 
+  <label for="band">Viento promedio desde el suelo hasta <small>(ft)</small></label>
+  <input id="band" inputmode="numeric" value="5000">
+  <label for="temp">Temperatura en tierra <small>(°C, opcional: afina el viento medido con IAS)</small></label>
+  <input id="temp" inputmode="decimal" placeholder="Por ejemplo 24">
+
   <button class="btn secondary" id="gpsBtn" type="button">Activar el GPS</button>
   <p class="note" id="gpsLine">GPS: apagado. Activalo en tierra para que el celular pida el permiso.</p>
   <button class="btn" id="start" type="button">OK</button>
@@ -163,6 +184,10 @@
 
 <main id="wind">
   <h1>Viento</h1>
+  <div class="sum">
+    <div id="sLow"></div>
+    <div id="sHigh"></div>
+  </div>
   <div class="hero">
     <svg class="rose" id="wRose" viewBox="0 0 100 100" role="img" aria-label="Viento">
       <circle class="ring" cx="50" cy="50" r="44"/>
@@ -175,6 +200,19 @@
     <div class="read" id="wRead"></div>
   </div>
   <div id="wNow"></div>
+  <div id="wCtl">
+    <button class="btn" id="wMeasure" type="button">Medir</button>
+    <div id="wIas" hidden>
+      <p class="note">¿A qué IAS fija van? Si no la sabés, <b>No sé</b>: hace falta una curva de 200° o más.</p>
+      <div class="ias">
+        <button type="button" data-ias="70">70</button><button type="button" data-ias="75">75</button><button type="button" data-ias="80">80</button>
+        <button type="button" data-ias="85">85</button><button type="button" data-ias="90">90</button><button type="button" data-ias="95">95</button>
+        <button type="button" data-ias="">No sé</button><button type="button" id="wIasNo">Cancelar</button>
+      </div>
+    </div>
+    <button class="btn" id="wStop" type="button" hidden>Terminar la medición</button>
+    <p class="err" id="wMsg" role="status"></p>
+  </div>
   <div id="wList"></div>
   <div class="wbtns">
     <button class="btn holdb" id="wClear" type="button">Mantené para borrar</button>
@@ -217,7 +255,7 @@
 
   // ---- Setup ----
   const saved = read(STORE);
-  if (saved) { $('point').value = saved.point || ''; $('gap').value = saved.gap || '600'; $('gs').value = saved.gs || '80'; $('unit').value = saved.unit || 'nm'; }
+  if (saved) { $('point').value = saved.point || ''; $('gap').value = saved.gap || '600'; $('gs').value = saved.gs || '80'; $('unit').value = saved.unit || 'nm'; $('band').value = saved.band || '5000'; $('temp').value = saved.temp || ''; }
   // From the planner: "lat, lon, separation, ground speed" by copy and paste (an installed app on iPhone does not share
   // storage with the browser); in the same browser, the stored plan is the fallback.
   function fill(text) {
@@ -288,7 +326,8 @@
   const winds = read(WIND_RES) || [];     // measured winds, newest last
   let turnS = [], turnAcc = 0, wPrev = null, altNow = null;
   const MIN_FLY = 20;                     // m/s (~40 kt): below that, the plane is not flying
-  const MAX_TURN_S = 150;                 // a 360 slower than this is not taken
+  const MAX_TURN_S = 300;                 // a 360 (or a racetrack: two 180° turns with straights) slower than this is not taken
+  let meas = null;                        // on-demand measurement: { ias, S, acc, lo, hi }
 
   function windSample(p, here, now) {
     const c = p.coords;
@@ -306,6 +345,7 @@
 
     const sp = Math.hypot(vx, vy);
     if (sp < MIN_FLY) { turnS = []; turnAcc = 0; return; }
+    if (meas) { measSample(now, vx, vy, alt); turnS = []; turnAcc = 0; return; } // no automatic detection meanwhile
     const crs = Math.atan2(vx, vy) * 180 / Math.PI;
     const last = turnS[turnS.length - 1];
     let d = 0;
@@ -325,30 +365,101 @@
     }
   }
 
-  // Kåsa circle fit: x² + y² + D·x + E·y + F = 0 by least squares (3×3 normal equations).
   function fitWind(S) {
+    const c = circleFit(S);
+    if (c && c.rms <= 4) pushWind(S, c.cx, c.cy, c.r, c.rms, c.rms < 1.5, 'giro'); // worse than 4 m/s: not a clean turn
+  }
+
+  // Kåsa circle fit: x² + y² + D·x + E·y + F = 0 by least squares (3×3 normal equations).
+  function circleFit(S) {
     let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sz = 0, sxz = 0, syz = 0;
     const n = S.length;
     for (const q of S) { const z = q.vx * q.vx + q.vy * q.vy; sx += q.vx; sy += q.vy; sxx += q.vx * q.vx; syy += q.vy * q.vy; sxy += q.vx * q.vy; sz += z; sxz += q.vx * z; syz += q.vy * z; }
     const A = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]], b = [-sxz, -syz, -sz];
     const det = (M) => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
     const D0 = det(A);
-    if (!D0) return;
+    if (!D0) return null;
     const col = (i) => A.map((row, k) => row.map((v, j) => (j === i ? b[k] : v)));
     const D = det(col(0)) / D0, E = det(col(1)) / D0, F = det(col(2)) / D0;
     const cx = -D / 2, cy = -E / 2, r = Math.sqrt(cx * cx + cy * cy - F);
-    if (!isFinite(r) || r < MIN_FLY) return;
+    if (!isFinite(r) || r < MIN_FLY) return null;
     const rms = Math.sqrt(S.reduce((a, q) => a + (Math.hypot(q.vx - cx, q.vy - cy) - r) ** 2, 0) / n);
-    if (rms > 4) return; // not a clean turn: discarded
+    return { cx, cy, r, rms };
+  }
+
+  // True airspeed from an indicated one, with the GPS altitude (≈ pressure altitude) and the standard atmosphere,
+  // corrected by the ground temperature if it was given (deviation from ISA at the DZ, kept constant with altitude).
+  function tasOf(iasKt, altM) {
+    const h = Math.max(0, (altM || 0) / 0.3048);
+    const dev = cfg && cfg.temp != null ? cfg.temp - 15 : 0;
+    const pr = Math.pow(1 - 6.8756e-6 * h, 5.2559), T = 288.15 - 0.0019812 * h + dev;
+    return iasKt * KT / Math.sqrt(pr * 288.15 / T);
+  }
+
+  // Known airspeed: the wind W is the point whose distance to each ground velocity is the TAS (fixed-radius circle).
+  function iasFit(S, ias) {
+    let wx = 0, wy = 0;
+    for (let it = 0; it < 80; it++) {
+      let ax = 0, ay = 0;
+      for (const q of S) { const dx = q.vx - wx, dy = q.vy - wy, L = Math.hypot(dx, dy) || 1, t = tasOf(ias, q.alt); ax += q.vx - t * dx / L; ay += q.vy - t * dy / L; }
+      wx = ax / S.length; wy = ay / S.length;
+    }
+    const tas = S.reduce((a, q) => a + tasOf(ias, q.alt), 0) / S.length;
+    const rms = Math.sqrt(S.reduce((a, q) => a + (Math.hypot(q.vx - wx, q.vy - wy) - tasOf(ias, q.alt)) ** 2, 0) / S.length);
+    return { cx: wx, cy: wy, r: tas, rms };
+  }
+
+  function pushWind(S, cx, cy, r, rms, ok, how) {
     const alts = S.map((q) => q.alt).filter((a) => a != null);
     winds.push({
       t: S[S.length - 1].t,
       altMin: alts.length ? Math.min(...alts) : null, altMax: alts.length ? Math.max(...alts) : null,
       from: Math.round(((Math.atan2(-cx, -cy) * 180 / Math.PI) + 360) % 360), // where the wind comes from
-      kt: Math.round(Math.hypot(cx, cy) / KT), tas: Math.round(r / KT), rms: +(rms / KT).toFixed(1),
-      ok: rms < 1.5,
+      kt: Math.round(Math.hypot(cx, cy) / KT), tas: Math.round(r / KT), rms: +(rms / KT).toFixed(1), ok, how,
     });
     write(WIND_RES, winds);
+  }
+
+  // ---- On-demand measurement ----
+  // With a known IAS a change of track of ~75° is enough; without it, a turn of 200° (a racetrack turn).
+  const targetOf = (m) => (m.ias ? 75 : 200);
+  function measSample(now, vx, vy, alt) {
+    const crs = Math.atan2(vx, vy) * 180 / Math.PI, last = meas.S[meas.S.length - 1];
+    if (last) { let d = crs - last.crs; d = ((d + 540) % 360) - 180; if (Math.abs(d) <= 60) { meas.acc += d; meas.lo = Math.min(meas.lo, meas.acc); meas.hi = Math.max(meas.hi, meas.acc); } }
+    meas.S.push({ t: now, vx, vy, alt, crs });
+    if (meas.hi - meas.lo >= targetOf(meas) && meas.S.length >= 15) finishMeas();
+  }
+  function startMeas(ias) {
+    meas = { ias, S: [], acc: 0, lo: 0, hi: 0 };
+    $('wMsg').textContent = '';
+    if (ias) write(STORE, Object.assign(read(STORE) || {}, { lastIas: ias }));
+  }
+  function finishMeas() {
+    const m = meas; meas = null;
+    const spread = m.hi - m.lo, min = m.ias ? 45 : 150;
+    if (m.S.length < 10 || spread < min) {
+      $('wMsg').textContent = 'Poco cambio de rumbo (' + Math.round(spread) + '°): no se guardó. Medí durante una curva' + (m.ias ? '.' : ' de 180° o más.');
+      return;
+    }
+    const c = m.ias ? iasFit(m.S, m.ias) : circleFit(m.S);
+    if (!c || c.rms > 4) { $('wMsg').textContent = 'La medición salió irregular (¿cambió la IAS?): no se guardó.'; return; }
+    // Stopped before the target turn: kept, but marked doubtful.
+    pushWind(m.S, c.cx, c.cy, c.r, c.rms, c.rms < 1.5 && spread >= targetOf(m), m.ias ? 'IAS ' + m.ias : 'curva');
+  }
+
+  // Average below the band (vector mean of the good rows, or of all if none is good) and the last one above it.
+  function bandSummary() {
+    const top = (cfg && cfg.band) || 5000, mid = (w) => w.altMin == null ? null : (w.altMin + w.altMax) / 2 / 0.3048;
+    const low = winds.filter((w) => mid(w) != null && mid(w) <= top), good = low.filter((w) => w.ok), use = good.length ? good : low;
+    let lowRes = null;
+    if (use.length) {
+      let x = 0, y = 0;
+      for (const w of use) { x -= w.kt * Math.sin(w.from * Math.PI / 180); y -= w.kt * Math.cos(w.from * Math.PI / 180); }
+      x /= use.length; y /= use.length;
+      lowRes = { from: Math.round(((Math.atan2(-x, -y) * 180 / Math.PI) + 360) % 360), kt: Math.round(Math.hypot(x, y)), n: use.length, ok: good.length > 0 };
+    }
+    const high = winds.filter((w) => mid(w) != null && mid(w) > top).pop() || null;
+    return { top, low: lowRes, high };
   }
 
   const ft = (m) => Math.round(m / 0.3048 / 50) * 50;
@@ -366,10 +477,25 @@
       $('wTicks').innerHTML = t; ticksDone = true;
     }
     const gpsOn = !!pos && !gpsErr && Date.now() - posAt < POS_FRESH, real = realSpeed();
-    // Turn progress around the rose.
-    $('wProg').setAttribute('stroke-dashoffset', String(276.5 * (1 - Math.min(1, Math.abs(turnAcc) / 360))));
+    // Turn progress around the rose: the measurement's, or the automatic 360's.
+    const prog = meas ? (meas.hi - meas.lo) / targetOf(meas) : Math.abs(turnAcc) / 360;
+    $('wProg').setAttribute('stroke-dashoffset', String(276.5 * (1 - Math.min(1, prog))));
+    const sm = bandSummary(), topTxt = Math.round(sm.top).toLocaleString('es-AR');
+    $('sLow').className = sm.low && !sm.low.ok ? 'doubt' : '';
+    $('sLow').innerHTML = '<div class="lab">0–' + topTxt + ' ft</div>' + (sm.low
+      ? '<div class="v">' + deg3(sm.low.from) + ' · ' + sm.low.kt + ' kt</div><div class="s">promedio de ' + sm.low.n + (sm.low.n === 1 ? ' medición' : ' mediciones') + '</div>'
+      : '<div class="v">–</div><div class="s">sin mediciones</div>');
+    $('sHigh').className = sm.high && !sm.high.ok ? 'doubt' : '';
+    $('sHigh').innerHTML = '<div class="lab">Arriba de ' + topTxt + ' ft</div>' + (sm.high
+      ? '<div class="v">' + deg3(sm.high.from) + ' · ' + sm.high.kt + ' kt</div><div class="s">' + altTxt(sm.high) + '</div>'
+      : '<div class="v">–</div><div class="s">sin mediciones</div>');
+    $('wMeasure').hidden = !!meas || !$('wIas').hidden; $('wStop').hidden = !meas;
     const w = winds[winds.length - 1];
-    if (w) {
+    if (meas) {
+      $('wArrow').style.display = 'none';
+      $('wRead').className = 'read';
+      $('wRead').innerHTML = '<span class="lab">Midiendo' + (meas.ias ? ' · IAS ' + meas.ias : ' · sin IAS') + '</span><span class="kt meas">' + Math.round(meas.hi - meas.lo) + '° de ' + targetOf(meas) + '°</span><span class="alt">Mantené la IAS y girá</span>';
+    } else if (w) {
       $('wArrow').style.display = ''; $('wArrow').style.transform = 'rotate(' + w.from + 'deg)';
       $('wRose').classList.toggle('doubt', !w.ok);
       $('wRose').setAttribute('aria-label', 'Viento de ' + w.from + ' grados a ' + w.kt + ' nudos');
@@ -378,15 +504,15 @@
     } else {
       $('wArrow').style.display = 'none';
       $('wRead').className = 'read';
-      $('wRead').innerHTML = '<span class="hint">Hacé un 360 a airspeed constante. El anillo se llena con el giro.</span>';
+      $('wRead').innerHTML = '<span class="hint">Tocá <b>Medir</b> cuando vayan a IAS fija, o hacé un 360 o un hipódromo: el anillo se llena con el giro.</span>';
     }
     $('wNow').innerHTML =
       '<span class="' + (gpsOn ? 'ok' : 'off') + '">' + ICON.gps + '</span>'
       + '<span class="' + (real != null ? 'ok' : '') + '">' + ICON.plane + (real != null ? kt(real) : '–') + '</span>'
       + '<span>' + (altNow != null ? ftTxt(altNow) + ' ft' : '– ft') + '</span>'
-      + '<span>↻ ' + Math.min(360, Math.round(Math.abs(turnAcc))) + '°</span>';
+      + (meas ? '' : '<span>↻ ' + Math.min(360, Math.round(Math.abs(turnAcc))) + '°</span>');
     $('wList').innerHTML = winds.length < 2 ? '' : '<table><thead><tr><th>Altura</th><th>Viene de</th><th>kt</th></tr></thead><tbody>'
-      + winds.slice(0, -1).reverse().map((x) => '<tr class="' + (x.ok ? '' : 'doubt') + '"><td>' + altTxt(x) + '</td><td>' + mini(x.from) + deg3(x.from) + '</td><td>' + x.kt + '</td></tr>').join('')
+      + winds.slice(0, -1).reverse().map((x) => '<tr class="' + (x.ok ? '' : 'doubt') + '"><td>' + altTxt(x) + '<small>' + (x.how || 'giro') + '</small></td><td>' + mini(x.from) + deg3(x.from) + '</td><td>' + x.kt + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
@@ -468,8 +594,9 @@
     }
     if (!(gap > 0) || !(gs > 0)) { $('err').textContent = 'Completá la separación y el ground speed con números.'; return; }
     $('err').textContent = '';
-    write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value, unit: $('unit').value });
-    cfg = { point, gap, gs, unit: $('unit').value };
+    write(STORE, { point: ptxt, gap: $('gap').value, gs: $('gs').value, unit: $('unit').value, band: $('band').value, temp: $('temp').value });
+    const band = num($('band').value), temp = num($('temp').value);
+    cfg = { point, gap, gs, unit: $('unit').value, band: band > 0 ? band : 5000, temp: isFinite(temp) ? temp : null };
     startGps(); wake();
     show('standby');
     clearInterval(timer); timer = setInterval(renderStandby, 500); renderStandby();
@@ -515,7 +642,11 @@
   holdButton($('edit'), () => { clearInterval(timer); show('setup'); });
   holdButton($('toWind'), () => { startGps(); clearInterval(timer); show('wind'); timer = setInterval(renderWind, 1000); renderWind(); });
   holdButton($('wBack'), () => { clearInterval(timer); show('standby'); timer = setInterval(renderStandby, 500); renderStandby(); });
-  holdButton($('wClear'), () => { winds.length = 0; turnS = []; turnAcc = 0; write(WIND_RES, winds); renderWind(); });
+  $('wMeasure').onclick = () => { $('wIas').hidden = false; $('wMsg').textContent = ''; renderWind(); };
+  for (const b of document.querySelectorAll('#wIas [data-ias]')) b.onclick = () => { $('wIas').hidden = true; startMeas(b.dataset.ias ? +b.dataset.ias : null); renderWind(); };
+  $('wIasNo').onclick = () => { $('wIas').hidden = true; renderWind(); };
+  $('wStop').onclick = () => { finishMeas(); renderWind(); };
+  holdButton($('wClear'), () => { meas = null; winds.length = 0; turnS = []; turnAcc = 0; write(WIND_RES, winds); renderWind(); });
 
   $('run').onclick = () => {
     exits = []; minDist = Infinity; passed = false; running = true; buzzed = false; ready = false;
