@@ -155,9 +155,9 @@ export function Planner() {
         <div className="row">
           {/* The installed clock (iPhone) does not share this browser's storage: the point goes by copy and paste. */}
           <button type="button" className="secondary" onClick={() => {
-            navigator.clipboard?.writeText(`${plan.run.a.lat}, ${plan.run.a.lon}`).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }, () => {});
+            navigator.clipboard?.writeText(`${plan.run.a.lat}, ${plan.run.a.lon}, ${plan.gap}, ${Math.round(plan.gs / KT)}`).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }, () => {});
           }}>{copied ? 'Copiado' : 'Copiar para el reloj'}</button>
-          <span className="sub small">Punto de la salida 1: {plan.run.a.lat}, {plan.run.a.lon}. Pegalo en el <a href="/door/index.html">Reloj de puerta</a>.</span>
+          <span className="sub small">Copia el punto de la salida 1, la separación y el ground speed ({plan.run.a.lat}, {plan.run.a.lon}, {plan.gap} m, {Math.round(plan.gs / KT)} kt). En el <a href="/door/index.html">Reloj de puerta</a>, tocá «Pegar lo copiado en Pasada».</span>
         </div>
       )}
 
