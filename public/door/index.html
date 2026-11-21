@@ -31,6 +31,7 @@
   input, select { width: 100%; font: inherit; font-size: 1.15rem; padding: 12px; border-radius: 10px; border: 1px solid #444; background: #1e1e1e; color: var(--fg); }
   .btn { display: block; width: 100%; margin-top: 12px; padding: 16px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font-size: 1.15rem; font-weight: 700; }
   .btn.secondary { background: #2a2a2a; border: 1px solid #444; }
+  .btn:disabled { opacity: .4; }
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; line-height: 1.4; }
   .err { color: #ff8a8a; margin-top: 10px; }
   /* Stand by */
@@ -48,6 +49,12 @@
   /* Hold-to-confirm buttons: the bar fills up while pressed. */
   #edit, #stop { background-image: linear-gradient(var(--brand), var(--brand)); background-repeat: no-repeat; background-position: left; background-size: 0% 100%; }
   #edit.hold, #stop.hold { background-size: 100% 100%; transition: background-size 1.5s linear; }
+  /* Map picker (needs internet: Leaflet and the satellite tiles are loaded only when opened) */
+  #picker { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); z-index: 10; }
+  #pmap { flex: 1; }
+  #picker .row { display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); align-items: center; }
+  #picker .row .btn { margin: 0; }
+  #pmsg { padding: 10px 12px 0; color: var(--muted); }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
            padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
@@ -72,6 +79,8 @@
 
   <label for="point">Punto de la 1ª salida <small>(latitud, longitud; vacío = arrancar por tiempo)</small></label>
   <input id="point" inputmode="decimal" placeholder="Pegá o escribí: latitud, longitud">
+  <button class="btn secondary" id="pick" type="button">Elegir en el mapa</button>
+  <p class="err" id="pickErr" role="alert"></p>
   <button class="btn secondary" id="fromPlan" type="button">Pegar lo copiado en Pasada</button>
   <p class="note" id="planNote">En <i>Pasada</i>, tocá <i>Copiar para el reloj</i> y después este botón: carga el punto de la salida 1, la separación y el ground speed.</p>
 
@@ -106,6 +115,15 @@
   <button class="btn" id="run" type="button">Iniciar<br>jump run</button>
   <button class="btn" id="edit" type="button">Mantené apretado para cambiar la configuración</button>
 </main>
+
+<section id="picker" aria-label="Elegir el punto en el mapa">
+  <p id="pmsg">Tocá el mapa donde va la salida 1.</p>
+  <div id="pmap"></div>
+  <div class="row">
+    <button class="btn secondary" id="pCancel" type="button">Cancelar</button>
+    <button class="btn" id="pUse" type="button" disabled>Usar este punto</button>
+  </div>
+</section>
 
 <section id="clock" aria-live="polite">
   <div class="bar">
@@ -159,6 +177,41 @@
   };
   // Pasting the whole copied line in the point field also fills separation and ground speed.
   $('point').addEventListener('change', () => { if ($('point').value.split(/[\s,;]+/).filter(Boolean).length > 2) fill($('point').value); });
+
+  // ---- Map picker ----
+  // Leaflet from a CDN only when the map is opened (setup is on the ground, with signal).
+  let pmap = null, pmark = null, picked = null;
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve();
+    return new Promise((ok, no) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+      const js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.onload = ok; js.onerror = () => { js.remove(); no(); };
+      document.head.appendChild(js);
+    });
+  }
+  $('pick').onclick = async () => {
+    $('pickErr').textContent = '';
+    try { await loadLeaflet(); } catch { $('pickErr').textContent = 'El mapa necesita internet. Pegá o escribí el punto.'; return; }
+    $('picker').style.display = 'flex';
+    const m = $('point').value.split(/[\s,;]+/).map(num);
+    const start = m.length >= 2 && m.slice(0, 2).every(isFinite) ? [m[0], m[1]] : pos ? [pos.lat, pos.lon] : [-33.06, -60.62]; // AVA
+    if (!pmap) {
+      pmap = L.map('pmap', { zoomControl: true });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagen © Esri' }).addTo(pmap);
+      pmap.on('click', (e) => {
+        picked = { lat: Math.round(e.latlng.lat * 1e6) / 1e6, lon: Math.round(e.latlng.lng * 1e6) / 1e6 };
+        if (pmark) pmark.setLatLng(e.latlng); else pmark = L.circleMarker(e.latlng, { radius: 10, color: '#fff', weight: 3, fillColor: '#9b2a8f', fillOpacity: 1 }).addTo(pmap);
+        $('pUse').disabled = false;
+        $('pmsg').textContent = 'Salida 1: ' + picked.lat + ', ' + picked.lon;
+      });
+    }
+    pmap.setView(start, 13);
+    setTimeout(() => pmap.invalidateSize(), 50);
+  };
+  $('pCancel').onclick = () => { $('picker').style.display = 'none'; };
+  $('pUse').onclick = () => { if (picked) $('point').value = picked.lat + ', ' + picked.lon; $('picker').style.display = 'none'; };
 
   // ---- GPS ----
   // A still phone (on the ground) sends few fixes, and iOS reports speed −1 when it does not know it:
