@@ -1,11 +1,16 @@
 {
   "name": "Reloj de puerta · Wingsuit Performance",
   "short_name": "Puerta",
+  "id": "/door/",
   "start_url": "/door/index.html",
   "scope": "/door/",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait",
   "background_color": "#121212",
   "theme_color": "#121212",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }

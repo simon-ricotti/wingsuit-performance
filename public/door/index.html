@@ -5,18 +5,21 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#121212">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Puerta">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Reloj de puerta</title>
 <style>
   :root { --bg: #121212; --fg: #fff; --muted: #b9b9b9; --brand: #9b2a8f; --warn: #f0b354; --go: #1f9d55; --late: #d63c3c; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  html { touch-action: pan-x pan-y; } /* no pinch zoom */
   body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   button { font: inherit; }
   /* Setup */
@@ -38,7 +41,7 @@
   .btn.go { background: var(--go); font-size: 1.4rem; padding: 22px; }
   /* Clock */
   #clock { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-           padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: manipulation; }
+           padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); background: var(--bg); transition: background-color .2s; touch-action: none; }
   #clock.warn { background: var(--warn); color: #111; }
   #clock.go { background: var(--go); }
   #clock.late { background: var(--late); }
@@ -65,10 +68,11 @@
   <label for="gs">Ground speed si no hay GPS <small>(kt)</small></label>
   <input id="gs" inputmode="numeric" value="80">
 
+  <button class="btn secondary" id="gpsBtn" type="button">Activar el GPS</button>
+  <p class="note" id="gpsLine">GPS: apagado. Activalo en tierra para que el celular pida el permiso.</p>
   <button class="btn" id="start" type="button">OK</button>
   <p class="err" id="err" role="alert"></p>
   <p class="note">Con GPS (cerca de la ventana) usa el ground speed real; si no, el que cargues. Cada toque en la pantalla marca una salida y vuelve a calcular los segundos con el ground speed de ese momento. Es una ayuda: la decisión de salir es de cada piloto (FAI 5.5.9).</p>
-  <p class="note" id="gpsNote"></p>
 </main>
 
 <main id="standby">
@@ -128,19 +132,41 @@
   }
 
   // ---- GPS ----
-  let pos = null, posAt = 0, gpsGs = null, gpsAt = 0, prev = null, watch = null;
-  function startGps() {
-    if (!('geolocation' in navigator) || watch != null) return;
-    watch = navigator.geolocation.watchPosition((p) => {
-      const now = Date.now(), here = { lat: p.coords.latitude, lon: p.coords.longitude };
-      let v = p.coords.speed;
-      if ((v == null || isNaN(v)) && prev && now - prev.t > 500) v = dist(prev.p, here) / ((now - prev.t) / 1000);
-      prev = { p: here, t: now };
-      pos = here; posAt = now;
-      if (v != null && isFinite(v)) { gpsGs = v; gpsAt = now; }
-    }, (e) => { $('gpsNote').textContent = 'GPS: ' + (e.code === 1 ? 'sin permiso; se usa el ground speed cargado.' : 'sin señal por ahora.'); },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  // A still phone (on the ground) sends few fixes, and iOS reports speed −1 when it does not know it:
+  // a position counts for 30 s, and a light poll every 4 s keeps it fresh.
+  const POS_FRESH = 30000;
+  let pos = null, posAt = 0, acc = null, gpsGs = null, gpsAt = 0, prev = null, watch = null, gpsErr = '';
+  function onFix(p) {
+    const now = Date.now(), here = { lat: p.coords.latitude, lon: p.coords.longitude };
+    let v = p.coords.speed;
+    if (v == null || isNaN(v) || v < 0) v = prev && now - prev.t > 900 ? dist(prev.p, here) / ((now - prev.t) / 1000) : null;
+    prev = { p: here, t: now };
+    pos = here; posAt = now; acc = p.coords.accuracy; gpsErr = '';
+    if (v != null && isFinite(v)) { gpsGs = v; gpsAt = now; }
+    gpsLine();
   }
+  function onErr(e) { if (e.code === 1) gpsErr = 'sin permiso: habilitá la ubicación para esta app en los ajustes del celular'; gpsLine(); }
+  function startGps() {
+    if (!('geolocation' in navigator)) { gpsErr = 'este navegador no tiene GPS'; gpsLine(); return; }
+    if (watch != null) return;
+    const o = { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 };
+    watch = navigator.geolocation.watchPosition(onFix, onErr, { enableHighAccuracy: true, maximumAge: 0 });
+    setInterval(() => navigator.geolocation.getCurrentPosition(onFix, onErr, o), 4000);
+    gpsLine();
+  }
+  function gpsText() {
+    if (gpsErr) return gpsErr;
+    if (watch == null) return 'apagado';
+    if (!pos) return 'buscando señal…';
+    const age = Math.round((Date.now() - posAt) / 1000);
+    if (age * 1000 > POS_FRESH) return 'sin señal hace ' + age + ' s';
+    const v = gpsGs != null && Date.now() - gpsAt < 5000 ? ' · ' + Math.round(gpsGs / KT) + ' kt' : '';
+    return 'OK ±' + Math.round(acc) + ' m' + v + (age > 5 ? ' (hace ' + age + ' s)' : '');
+  }
+  function gpsLine() { $('gpsLine').textContent = 'GPS: ' + gpsText(); }
+  $('gpsBtn').onclick = startGps;
+  // If the permission was already given, turn it on by itself.
+  try { navigator.permissions.query({ name: 'geolocation' }).then((r) => { if (r.state === 'granted') startGps(); }); } catch { /* old browser */ }
   // GPS speed only if recent and the plane is flying (over ~30 kt); otherwise the typed one.
   function groundSpeed() {
     if (gpsGs != null && Date.now() - gpsAt < 5000 && gpsGs > 15) return { v: gpsGs, src: 'GPS' };
@@ -176,11 +202,11 @@
   function show(id) { for (const k of ['setup', 'standby', 'clock']) $(k).style.display = k === id ? (k === 'clock' ? 'flex' : 'block') : 'none'; }
 
   function renderStandby() {
-    const gs = groundSpeed(), gpsOk = gpsGs != null && Date.now() - gpsAt < 5000;
+    const gs = groundSpeed();
     $('sbPoint').textContent = cfg.point ? cfg.point.lat.toFixed(5) + ', ' + cfg.point.lon.toFixed(5) : 'Sin punto (por tiempo)';
     $('sbGap').textContent = cfg.gap + ' m';
     $('sbGs').textContent = cfg.gs + ' kt';
-    $('sbGps').textContent = pos ? (gpsOk ? kt(gpsGs) + ' kt' : 'con posición') : 'sin señal';
+    $('sbGps').textContent = gpsText();
     $('sbDist').textContent = cfg.point && pos ? (dist(pos, cfg.point) / 1000).toFixed(1).replace('.', ',') + ' km' : '–';
     $('sbSecs').textContent = Math.ceil(cfg.gap / gs.v) + ' s (' + kt(gs.v) + ' kt, ' + gs.src + ')';
   }
@@ -228,7 +254,7 @@
     if (!last) {
       // Before the first exit: by the point (GPS). Without a point or without GPS, the first tap is free.
       $('label').textContent = 'PRIMERA SALIDA';
-      if (cfg.point && pos && Date.now() - posAt < 10000) {
+      if (cfg.point && pos && Date.now() - posAt < POS_FRESH) {
         const d = dist(pos, cfg.point);
         minDist = Math.min(minDist, d);
         const passed = d < 400 && d > minDist + 40; // was closer and is moving away
@@ -259,6 +285,9 @@
     $('info').textContent = cfg.gap + ' m a ' + kt(last.gs.v) + ' kt (' + last.gs.src + ') = ' + last.target + ' s · desde la última: ' + Math.floor(since) + ' s';
     $('hint').textContent = 'Ahora: ' + kt(gs.v) + ' kt (' + gs.src + ') · ' + (ready ? 'tocá la pantalla al salir' : 'se puede tocar en cero');
   }
+
+  // iOS ignores user-scalable=no: block pinch and double-tap zoom by hand.
+  for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
