@@ -197,6 +197,29 @@ a, button, select { touch-action: manipulation; }
 .rules-t th, .rules-t td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .rules-t th { color: var(--muted); font-size: .85rem; }
 .help .note { margin: 10px 0 4px; }
+/* Help: the day as a timeline. Role chips: organizer (brand), judge (teal), pilot (orange), on board (grey), everyone. */
+.help { --r-org: var(--brand); --r-judge: #0b7f86; --r-pilot: #b4500f; --r-board: #5e5e5e; }
+@media (prefers-color-scheme: dark) { .help { --r-judge: #4fc3c9; --r-pilot: #ff9a5c; --r-board: #b3aab1; } }
+.help .who { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1.5px solid var(--r-org); color: var(--r-org); font-size: .78rem; font-weight: 700; white-space: nowrap; vertical-align: 1px; }
+.help .who.judge { border-color: var(--r-judge); color: var(--r-judge); }
+.help .who.pilot { border-color: var(--r-pilot); color: var(--r-pilot); }
+.help .who.board { border-color: var(--r-board); color: var(--r-board); }
+.help .who.all { border-color: var(--fg); color: var(--fg); }
+.help p > .who:first-child { margin-left: 0; }
+.day { list-style: none; padding: 0 !important; margin: 16px 0; }
+.day .phase { position: relative; padding: 0 0 18px 26px; border-left: 3px solid var(--line); margin-left: 8px; }
+.day .phase:last-child { border-left-color: transparent; }
+.day .phase::before { content: ''; position: absolute; left: -9px; top: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--brand-fill); }
+.day .phase > h3 { margin: 0 0 8px !important; font-size: 1.05rem !important; }
+.day .phase > ol { list-style: none; padding: 0 !important; display: grid; gap: 8px; }
+.day .phase > ol > li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.day .phase > ol > li p { margin: 0; }
+.day .step-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-bottom: 4px !important; }
+.day .step-h b { margin-right: 4px; }
+.day .loop > ol { border: 2px dashed var(--brand); border-radius: 14px; padding: 10px !important; counter-reset: r; }
+.day .loop > ol > li { counter-increment: r; }
+.day .loop > ol > li .step-h b::before { content: counter(r) '. '; color: var(--brand); }
+.day .again { margin-left: 8px; font-size: .8rem; font-weight: 700; color: var(--brand); white-space: nowrap; }
 .fig { margin: 14px 0 16px; }
 .fig svg { display: block; width: 100%; height: auto; max-width: 720px; }
 .fig figcaption { font-size: .88rem; color: var(--muted); margin-top: 6px; }

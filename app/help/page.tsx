@@ -1,6 +1,18 @@
 // Help by role, centred on running an event with the system. Public and static (CDN): it holds nothing private,
 // so judges and pilots can open it on the phone at the DZ without logging in.
 import Link from 'next/link';
+import type { ReactNode } from 'react';
+
+// Who does each step of the day (colour chip). "A bordo": whoever carries the door clock (Flight Director, jumpmaster).
+const WHO = { org: 'Organizador', judge: 'Juez', pilot: 'Piloto', board: 'A bordo', all: 'Todos' } as const;
+function Step({ who, title, children }: { who: (keyof typeof WHO)[]; title: string; children: ReactNode }) {
+  return (
+    <li>
+      <p className="step-h"><b>{title}</b>{who.map((w) => <span key={w} className={`who ${w}`}>{WHO[w]}</span>)}</p>
+      <p>{children}</p>
+    </li>
+  );
+}
 
 export const metadata = { title: 'Ayuda · Wingsuit Performance', description: 'Cómo usar Wingsuit Performance en una jornada: organizador, jueces y pilotos.' };
 
@@ -11,8 +23,54 @@ export default function HelpPage() {
       <h1>Ayuda</h1>
       <p>Cómo usar el sistema en una jornada, según tu rol. Para el reglamento, mirá <Link href="/judging">Reglamento para jueces</Link> y <Link href="/scoring">Cómo se puntúa</Link>.</p>
       <nav aria-label="Secciones" className="row">
-        <a href="#entrar">Entrar</a> · <a href="#organizador">Organizador</a> · <a href="#juez">Juez</a> · <a href="#piloto">Piloto</a> · <a href="#problemas">Problemas frecuentes</a>
+        <a href="#dia">El día paso a paso</a> · <a href="#entrar">Entrar</a> · <a href="#organizador">Organizador</a> · <a href="#juez">Juez</a> · <a href="#piloto">Piloto</a> · <a href="#problemas">Problemas frecuentes</a>
       </nav>
+
+      <h2 id="dia">El día paso a paso</h2>
+      <p>Quién hace qué, de la preparación al cierre. El color dice quién: <span className="who org">Organizador</span> <span className="who judge">Juez</span> <span className="who pilot">Piloto</span> <span className="who board">A bordo</span> (quien lleva el reloj de puerta: Flight Director o jumpmaster) <span className="who all">Todos</span>.</p>
+      <ol className="day">
+        <li className="phase">
+          <h3>1 · Días antes</h3>
+          <ol>
+            <Step who={['org']} title="Gente y pilotos"><i>Usuarios y roles</i>: rol juez a cada juez (su nombre es el de la firma) y cada piloto vinculado a su ficha. En <i>Pilotos</i>, todos cargados con traje, categoría y equipo.</Step>
+            <Step who={['org']} title="Crear la jornada"><i>Jornadas → Nueva jornada</i>: modo (Competencia o Libre), elevación del DZ (AVA 26 m), puntos de referencia en el mapa, perfil de juzgamiento (FAI: dos firmas; Argentina: una) y si los pilotos cargan sus saltos.</Step>
+            <Step who={['org']} title="Base de datos">Si estuvo una semana sin uso, quien administra la parte técnica la reactiva el día anterior.</Step>
+          </ol>
+        </li>
+        <li className="phase">
+          <h3>2 · A la mañana, en la DZ</h3>
+          <ol>
+            <Step who={['org']} title="Calcular la pasada">En <Link href="/jump-run">Pasada</Link>: <i>Traer el pronóstico</i>, aterrizaje y puntos en el mapa → rumbo perpendicular al viento y segundos entre salidas. En los ajustes de la jornada, <i>Usar la pasada del planificador</i> → <i>Guardar</i>.</Step>
+            <Step who={['board']} title="Preparar el reloj de puerta">En <i>Pasada</i>, <i>Copiar para el reloj</i>; en el reloj, <i>Pegar lo copiado en Pasada</i> (o <i>Elegir en el mapa</i>), separación → <i>OK</i>. Queda en Stand by.</Step>
+            <Step who={['org']} title="Orden de salida">En la jornada, <i>Orden de salida</i>: participantes y pilotos por pasada, sorteo del orden de las tareas, ronda 1 <i>Inverso de</i> la última jornada (o <i>Sorteo</i>) → <i>Armar orden</i>. Imprimilo.</Step>
+            <Step who={['all']} title="Reunión de competidores">Orden y pasadas, el punto de referencia de cada uno (FAI 5.5.5), los segundos entre salidas y el plan si cambia el viento.</Step>
+          </ol>
+        </li>
+        <li className="phase loop">
+          <h3>3 · Cada ronda <span className="again">↻ se repite</span></h3>
+          <ol>
+            <Step who={['board']} title="Subida">Reloj en Stand by: punto, GPS y ground speed en verde. Si hace falta el viento en altura, <i>Modo viento</i> y un 360 a airspeed constante.</Step>
+            <Step who={['board', 'pilot']} title="Pasada"><i>Iniciar jump run</i>: cuenta hasta la vertical del punto; después, cada salida se toca en cero y cuenta los segundos para la siguiente.</Step>
+            <Step who={['judge', 'pilot']} title="Cargar los saltos">Al aterrizar, <i>Cargar salto</i>: piloto, tarea, ronda, el punto asignado y el archivo del GPS → <i>Guardar salto</i>. Lo hace el juez, o el piloto si la jornada lo permite.</Step>
+            <Step who={['judge']} title="Revisar y firmar cada salto">Apenas se carga, con el piloto cerca: decisiones pendientes (GPS, salida, carril, separación) → <i>Firmar revisión</i>. Con perfil FAI, dos jueces distintos.</Step>
+            <Step who={['judge']} title="Validar la tarea">Cuando todos los saltos de esa tarea y ronda están firmados → <i>Validar tarea</i>, debajo de la clasificación.</Step>
+            <Step who={['org', 'judge']} title="Orden de la ronda siguiente"><i>Orden de salida → Armar orden</i>: usa la clasificación hasta ese momento (FAI 5.5.3). Y de vuelta a la subida.</Step>
+          </ol>
+        </li>
+        <li className="phase">
+          <h3>4 · Al cerrar</h3>
+          <ol>
+            <Step who={['org']} title="Desempate y equipos">Si hay empate en el podio, <i>Sortear la tarea de desempate</i> y un salto más. Si un equipo tiene más pilotos de los que puntúan, nominá a los integrantes.</Step>
+            <Step who={['org', 'judge']} title="Todo validado">Todas las tareas validadas: si queda alguna provisoria, el acta sale “Provisoria”.</Step>
+            <Step who={['org']} title="Acta y respaldo"><i>Acta y exportar</i>: imprimí el acta y firmala. <b>Descargá la copia completa</b> y guardala: es el respaldo de la jornada.</Step>
+            <Step who={['org']} title="Publicar"><i>Ajustes e historial → Publicar la jornada</i>: aparece en <Link href="/results">Resultados</Link> y suma al <Link href="/ranking">Ranking</Link>.</Step>
+          </ol>
+        </li>
+      </ol>
+      <div className="note">
+        <p><b>¿Firmar cada salto o todo al final?</b> Cada salto, apenas se carga: si el GPS falló o la salida estuvo fuera de norma, el re-salto se decide con el piloto todavía en la DZ. Cada tarea se valida al terminar su ronda, porque el orden de la ronda siguiente sale de la clasificación. Al final solo queda comprobar que no haya nada provisorio.</p>
+        <p><b>Entrenamiento (modo Libre):</b> no hacen falta orden de salida, desempate ni equipos. Suele convenir que cada piloto cargue sus saltos; publicala al final para que cuente en el Ranking.</p>
+      </div>
 
       <h2 id="entrar">Entrar y roles</h2>
       <ul>
