@@ -1,5 +1,5 @@
 'use client';
-// Replay of a pass: legacy/src/replay.js (2D views and live board) and replay3d.js (three.js r128)
+// Replay of a pass: legacy/src/replay.js (2D views and live board) and a copy of replay3d.js (three.js r128, window planes as wide as every flyer)
 // mounted as they are. They read the engine from window.WSP and their data from window.WSApp.
 import { useEffect, useMemo, useState } from 'react';
 import * as engine from '@/lib/engine';
@@ -63,7 +63,7 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
     };
     (async () => {
       await loadThree();
-      await import('@/legacy/src/replay3d.js');
+      await import('@/app/admin/events/[id]/replay/replay3d.js');
       await import('@/legacy/src/replay.js');
       if (!cancelled) await w.Replay.mount();
     })();
