@@ -17,12 +17,13 @@ const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const n = (s: string) => parseFloat(s.replace(',', '.'));
 const deg = (d: number) => `${String(Math.round(((d % 360) + 360) % 360) || 360).padStart(3, '0')}°`;
 
-interface Inputs { windFrom: string; windKt: string; tasKt: string; exits: string; gap: string; upwind: string; side: 1 | -1 }
-// Upwind distance by default: the flyer glides ~2.5 (horizontal / height) from the exit (FAI: 10.500–11.000 ft)
-// down to the opening (~3.500 ft), so the run goes that far from the landing: 2.5 × 7.250 ft ≈ 5.500 m.
-const GLIDE = 2.5, EXIT_FT = 10750, OPEN_FT = 3500;
-const UPWIND = String(Math.round((GLIDE * (EXIT_FT - OPEN_FT) * 0.3048) / 100) * 100);
-const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', upwind: UPWIND, side: 1 };
+interface Inputs { windFrom: string; windKt: string; tasKt: string; exits: string; gap: string; glide: string; upwind: string; side: 1 | -1 }
+// Upwind distance from the glide: from the exit to the window (2500 m) the flyer dives to build speed (counted as
+// no distance), then glides (horizontal / height, ~2.5) down to the opening (~3500 ft): 2.5 × 1433 m ≈ 3600 m.
+const WINDOW_TOP = 2500, OPEN_M = 3500 * 0.3048;
+const upwindOf = (glide: string) => { const g = n(glide); return isFinite(g) && g > 0 ? String(Math.round((g * (WINDOW_TOP - OPEN_M)) / 100) * 100) : ''; };
+const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', glide: '2,5', upwind: upwindOf('2,5'), side: 1 };
+const OLD_DEFAULTS = ['1500', '5500']; // earlier defaults (too far): move saved plans to the new one
 
 interface Hour { time: string; w700: [number, number]; w850: [number, number]; w10: [number, number]; gust: number }
 
@@ -42,8 +43,7 @@ export function Planner() {
       const p = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null');
       if (p?.landing) setLanding(p.landing);
       if (Array.isArray(p?.refs)) setRefs(p.refs);
-      // 1500 was the old default (too close: the flyers opened past the landing); move it to the glide one.
-      if (p?.inputs) setInp({ ...DEFAULTS, ...p.inputs, ...(p.inputs.upwind === '1500' ? { upwind: UPWIND } : {}) });
+      if (p?.inputs) setInp({ ...DEFAULTS, ...p.inputs, ...(OLD_DEFAULTS.includes(p.inputs.upwind) ? { upwind: DEFAULTS.upwind } : {}) });
     } catch { /* start fresh */ }
     setLoaded(true);
   }, []);
@@ -140,9 +140,12 @@ export function Planner() {
         {field('tasKt', 'Velocidad del avión en la pasada', 'kt')}
         {field('exits', 'Salidas en la pasada', 'pilotos')}
         {field('gap', 'Separación entre salidas, mínimo 600', 'm')}
+        <label className="field">Planeo en la ventana (distancia / altura)
+          <input inputMode="decimal" value={inp.glide} onChange={(e) => { const glide = e.target.value; setInp((x) => ({ ...x, glide, upwind: upwindOf(glide) || x.upwind })); }} />
+        </label>
         {field('upwind', 'Centro de la pasada a barlovento del aterrizaje', 'm')}
       </div>
-      <p className="sub small">Barlovento: por defecto {UPWIND} m, un planeo de 2,5 desde la salida (~10.750 ft) hasta la apertura (~3.500 ft). Si los pilotos llegan a la apertura muy encima del aterrizaje, alejala; si quedan cortos, acercala.</p>
+      <p className="sub small">La distancia a barlovento sale del planeo: de la salida a la ventana (2500 m) se pica para tomar velocidad y casi no se avanza; desde ahí se planea hasta la apertura (~3500 ft). Con 2,5 da {upwindOf('2,5')} m. Al cambiar el planeo se recalcula; también la podés ajustar a mano.</p>
       {n(inp.gap) < 600 && <p className="error" role="alert">La FAI pide al menos 600 m entre salidas (5.5.4).</p>}
       <div className="seg" role="group" aria-label="Sentido de la pasada">
         {([1, -1] as const).map((s) => (
