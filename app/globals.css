@@ -253,3 +253,13 @@ ol.podium { counter-reset: pos; }
 ol.podium li::before { counter-increment: pos; content: counter(pos); font-weight: 700; color: var(--muted); min-width: 1.2em; }
 .home-links a { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; }
 .home-links a .small { font-family: var(--font-body); font-weight: 400; }
+/* Exit order: hand ordering and the point of each exit (the select on screen, the name when printed). */
+.manual-order { padding-left: 28px; display: grid; gap: 6px; max-width: 460px; }
+.manual-order li { display: flex; align-items: center; gap: 8px; }
+.manual-order li span { flex: 1; font-weight: 700; }
+.manual-order button { min-width: 48px; min-height: 44px; font-size: 1.1rem; padding: 4px 10px; }
+.refpick { display: inline-flex; gap: 6px; margin-left: 6px; }
+.refpick select { padding: 2px 6px; font-size: .9rem; }
+.ref-print { display: none; color: var(--muted); }
+@media print { .refpick { display: none; } .ref-print { display: inline; } }
+

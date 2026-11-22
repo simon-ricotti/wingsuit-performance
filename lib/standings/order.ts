@@ -36,3 +36,30 @@ export function topTies(st: Standings): { rank: number; rows: StandingRow[] }[] 
   for (const r of st.rows) if (r.jumps && r.rank <= 3) groups.set(r.rank, [...(groups.get(r.rank) ?? []), r]);
   return [...groups].filter(([, rows]) => rows.length > 1).map(([rank, rows]) => ({ rank, rows }));
 }
+
+// ---------- reference points of each exit ----------
+/** Exit order of a round, as stored in events.exit_order; `refs` holds the organizer's changes to the assigned points. */
+export interface RoundOrder { ids: string[]; how: string; at: number; by?: string; refs?: Partial<Record<Task, Record<string, number>>> }
+
+/**
+ * Reference point of each pilot in each task of a round (5.5.5): position N in their pass goes to point N, cycling when
+ * there are more exits than points (as the jump run map draws it). Passes and the order within them rotate between
+ * tasks (5.5.6), so each pilot goes through different points. The organizer's changes win.
+ */
+export function assignedRefs(o: RoundOrder | undefined, passSize: number, order: Task[], nRefs: number): Partial<Record<Task, Record<string, number>>> {
+  const out: Partial<Record<Task, Record<string, number>>> = {};
+  if (!o || !nRefs) return out;
+  for (const { task, passes } of passPlan(o.ids, passSize, order)) {
+    const m: Record<string, number> = {};
+    for (const p of passes) p.forEach((pid, i) => { const v = o.refs?.[task]?.[pid]; m[pid] = v != null && v >= 0 && v < nRefs ? v : i % nRefs; });
+    out[task] = m;
+  }
+  return out;
+}
+
+/** Point assigned to one jump by the exit order, or null when the round has no order. */
+export function plannedRef(exitOrder: unknown, passSize: number | null | undefined, taskOrderRaw: unknown, nRefs: number, pilotId: string, task: Task, round: number): number | null {
+  const o = (exitOrder as Record<string, RoundOrder> | null)?.[round];
+  return assignedRefs(o, passSize ?? 5, taskOrder(taskOrderRaw), nRefs)[task]?.[pilotId] ?? null;
+}
+

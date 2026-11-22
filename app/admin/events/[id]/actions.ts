@@ -2,7 +2,7 @@
 import { randomInt } from 'node:crypto';
 import { TASKS } from '@/lib/engine';
 import { eventStandings } from '@/lib/standings/views';
-import { reverseOrder, shuffle, topTies } from '@/lib/standings/order';
+import { reverseOrder, shuffle, topTies, type RoundOrder } from '@/lib/standings/order';
 import { revalidatePath } from 'next/cache';
 import { assertRole } from '@/lib/auth/session';
 import { actorName, callWrite, type FormState } from '@/lib/admin/write';
@@ -116,6 +116,24 @@ export async function eventState(_prev: FormState, form: FormData): Promise<Form
       order[round] = { ids: res.order, how, at: Date.now(), by: who };
       patch = { exit_order: order }; text = `Orden de salida de la ronda ${round}: ${how}`;
     }
+  } else if (op === 'order-set') {
+    // Order typed by hand (not the FAI procedure): kept, but labelled as such.
+    const round = Math.round(+(form.get('round') ?? 0));
+    if (!(round >= 1 && round <= 99)) return { error: 'Ronda inválida.' };
+    const ids = String(form.get('ids') ?? '').split(',').filter(Boolean);
+    if (!ids.length || new Set(ids).size !== ids.length || ids.some((id) => !(pilots ?? []).some((p) => p.id === id))) return { error: 'El orden tiene pilotos repetidos o que no existen.' };
+    const order = { ...((ev.exit_order ?? {}) as Record<string, unknown>) };
+    order[round] = { ids, how: 'Manual (no oficial)', at: Date.now(), by: who };
+    patch = { exit_order: order }; text = `Orden de salida de la ronda ${round}, a mano: ${ids.map(name).join(', ')}`;
+  } else if (op === 'order-ref') {
+    // 5.5.5: the Meet Director assigns each competitor's point; this changes the one the order proposes.
+    const round = Math.round(+(form.get('round') ?? 0)), task = String(form.get('task') ?? ''), pilot = String(form.get('pilot') ?? '');
+    const refs = (ev.refs ?? []) as { name: string }[], ref = Math.round(+(form.get('ref') ?? -1));
+    const order = { ...((ev.exit_order ?? {}) as Record<string, RoundOrder>) }, o = order[round];
+    if (!o || !(TASKS as readonly string[]).includes(task) || !o.ids.includes(pilot) || !(ref >= 0 && ref < refs.length)) return { error: 'Asignación inválida.' };
+    const t = task as (typeof TASKS)[number];
+    order[round] = { ...o, refs: { ...o.refs, [t]: { ...o.refs?.[t], [pilot]: ref } } };
+    patch = { exit_order: order }; text = `Punto de ${name(pilot)} en ${TASK_LABEL[t]} ronda ${round}: ${refs[ref].name}`;
   } else return { error: 'Operación inválida.' };
 
   const r = await callWrite('set_event_state', { p_event: eventId, p_patch: patch, p_text: text, p_actor: s.userId, p_who: who });

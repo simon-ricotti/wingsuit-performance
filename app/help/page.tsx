@@ -99,7 +99,7 @@ export default function HelpPage() {
             <li><b>Carga de saltos por los pilotos:</b> activalo solo si querés que cada piloto suba los suyos; si no, los cargan los jueces.</li>
           </ul>
         </li>
-        <li><b>Orden de salida:</b> en la jornada, <i>Orden de salida</i>: marcá los participantes y los pilotos por pasada → <i>Guardar participantes</i>; sorteá el orden de las tareas; en la ronda 1 elegí <i>Inverso de</i> la última jornada (o Sorteo) → <i>Armar orden</i>. Imprimilo para la reunión de competidores.</li>
+        <li><b>Orden de salida:</b> en la jornada, <i>Orden de salida</i>: marcá los participantes y los pilotos por pasada → <i>Guardar participantes</i>; sorteá el orden de las tareas; en la ronda 1 elegí <i>Inverso de</i> la última jornada (o Sorteo) → <i>Armar orden</i>. Imprimilo para la reunión de competidores. Si el orden no sale del reglamento (entrenamiento, o se decide en la DZ), en cada ronda <i>Ordenar a mano (no oficial)</i>: subí y bajá con ▲▼ → <i>Guardar este orden</i>. Al lado de cada piloto aparece su <b>punto de referencia</b>: la salida 1 de cada pasada va al primer punto, la 2 al segundo, y así; como el orden rota entre tareas, cada uno pasa por distintos puntos (FAI 5.5.5 y 5.5.6). Se puede cambiar el de cada uno con su selector, y al cargar el salto ya viene elegido.</li>
         <li>El día anterior, quien administra la parte técnica reactiva la base de datos (en el plan gratis se pausa si no se usa una semana).</li>
       </ol>
       <h3>Durante</h3>
@@ -119,7 +119,7 @@ export default function HelpPage() {
       <h2 id="juez">Juez</h2>
       <h3>Cargar un salto</h3>
       <ol>
-        <li>En la jornada, <i>Cargar salto</i>: elegí piloto, tarea, ronda y el <b>punto de referencia que le asignaron</b>.</li>
+        <li>En la jornada, <i>Cargar salto</i>: elegí piloto, tarea y ronda. Si la ronda tiene orden de salida, el <b>punto de referencia</b> ya viene elegido según ese orden; cambialo si en la puerta le asignaron otro.</li>
         <li>Elegí el archivo del GPS (FlySight, FlySight 2, Deep and Steep, GPX, KML o CSV). Aparece una <b>vista previa</b> con el resultado y los avisos: revisala.</li>
         <li><i>Guardar salto</i>. El servidor vuelve a calcular el puntaje oficial y guarda el archivo original con su huella.</li>
         <li>Si el piloto ya tenía salto en esa tarea y ronda (por ejemplo, un re-salto), el nuevo lo <b>reemplaza</b> y el anterior queda archivado. Se pierden las decisiones y firmas del anterior.</li>

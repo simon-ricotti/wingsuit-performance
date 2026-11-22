@@ -14,7 +14,7 @@ export default async function PilotUploadPage({ params }: { params: Promise<{ id
   const s = await requireRole('admin', 'judge', 'pilot');
   const admin = createAdminClient();
   const [{ data: ev }, { data: pilot }, { data: jumps }] = await Promise.all([
-    admin.from('events').select('id, name, cfg, lane, refs, sep_check, units, mode, rounds, tiebreak, pilot_uploads').eq('id', id).maybeSingle<EventRow>(),
+    admin.from('events').select('id, name, cfg, lane, refs, sep_check, units, mode, rounds, tiebreak, exit_order, pass_size, task_order, pilot_uploads').eq('id', id).maybeSingle<EventRow>(),
     admin.from('pilots').select('id, name').eq('id', s.pilotId ?? '-').maybeSingle(),
     admin.from('jumps').select('task, round, void').eq('event_id', id).eq('pilot_id', s.pilotId ?? '-'),
   ]);

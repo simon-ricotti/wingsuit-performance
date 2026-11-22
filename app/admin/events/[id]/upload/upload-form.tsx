@@ -6,10 +6,12 @@ import { parseTrack, scoreJump, TASKS, type JumpRecord } from '@/lib/engine';
 import { eventConfig, jumpDoc, roundName, TASK_LABEL, uploadRef } from '@/lib/jumps/score';
 import type { EventRow } from '@/lib/data/rows';
 import { createClient } from '@/lib/supabase/browser';
+import { plannedRef } from '@/lib/standings/order';
+import type { Task } from '@/lib/engine';
 import { JumpResult } from '../../../jumps/jump-result';
 import { requestJumpUpload, saveJump } from './actions';
 
-type EventInfo = Pick<EventRow, 'id' | 'cfg' | 'lane' | 'refs' | 'sep_check' | 'units' | 'mode' | 'rounds' | 'tiebreak'>;
+type EventInfo = Pick<EventRow, 'id' | 'cfg' | 'lane' | 'refs' | 'sep_check' | 'units' | 'mode' | 'rounds' | 'tiebreak'> & Partial<Pick<EventRow, 'exit_order' | 'pass_size' | 'task_order'>>;
 interface Props {
   /** A pilot uploading their own jumps: the pilot is fixed and there is no "new pilot". */
   ownPilot?: { id: string; name: string };
@@ -33,7 +35,9 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilo
   const [newName, setNewName] = useState('');
   const [task, setTask] = useState<string>('time');
   const [round, setRound] = useState(1);
-  const [refIdx, setRefIdx] = useState(0);
+  // The point the exit order assigns to this pilot, task and round (5.5.5), or null.
+  const planned = (p: string, t: string, r: number) => (ev.lane ? plannedRef(ev.exit_order, ev.pass_size, ev.task_order, ((ev.refs ?? []) as unknown[]).length, p, t as Task, r) : null);
+  const [refIdx, setRefIdx] = useState(() => planned(ownPilot?.id ?? '', 'time', 1) ?? 0);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<{ jump: JumpRecord } | { error: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -96,7 +100,7 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilo
       <form onSubmit={onSave} className="stack">
         <div className="grid">
           {ownPilot ? <p className="field">Piloto<b>{ownPilot.name}</b></p> : <label className="field">Piloto
-            <select value={pilotId} onChange={(e) => { setPilotId(e.target.value); computePreview(file, { refIdx, task, round, pilotId: e.target.value }); }}>
+            <select value={pilotId} onChange={(e) => { const p = e.target.value, ri = planned(p, task, round) ?? refIdx; setPilotId(p); setRefIdx(ri); computePreview(file, { refIdx: ri, task, round, pilotId: p }); }}>
               <option value="">Elegí…</option>
               {pilots.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               <option value="__new">+ Piloto nuevo</option>
@@ -107,18 +111,18 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilo
             <div className="seg" role="group" aria-label="Tarea">
               {TASKS.map((t) => (
                 <button key={t} type="button" aria-pressed={task === t}
-                  onClick={() => { setTask(t); computePreview(file, { refIdx, task: t, round, pilotId }); }}>{TASK_LABEL[t]}</button>
+                  onClick={() => { const ri = planned(pilotId, t, round) ?? refIdx; setTask(t); setRefIdx(ri); computePreview(file, { refIdx: ri, task: t, round, pilotId }); }}>{TASK_LABEL[t]}</button>
               ))}
             </div>
           </div>
           <label className="field">Ronda
             {ev.mode === 'competition' ? (
-              <select value={round} onChange={(e) => setRound(+e.target.value)}>
+              <select value={round} onChange={(e) => { const r = +e.target.value, ri = planned(pilotId, task, r) ?? refIdx; setRound(r); setRefIdx(ri); computePreview(file, { refIdx: ri, task, round: r, pilotId }); }}>
                 {roundOptions.map((n) => <option key={n} value={n}>Ronda {n}</option>)}
                 {tiebreak && <option value={0}>Salto de desempate ({TASK_LABEL[tiebreak as keyof typeof TASK_LABEL]})</option>}
               </select>
             ) : (
-              <input inputMode="numeric" value={round} onChange={(e) => setRound(Math.max(0, Math.round(+e.target.value || 0)))} />
+              <input inputMode="numeric" value={round} onChange={(e) => { const r = Math.max(0, Math.round(+e.target.value || 0)), ri = planned(pilotId, task, r) ?? refIdx; setRound(r); setRefIdx(ri); computePreview(file, { refIdx: ri, task, round: r, pilotId }); }} />
             )}
           </label>
           {ev.lane && refs.length > 0 && (
@@ -126,6 +130,7 @@ export function UploadForm({ event: ev, pilots: initialPilots, existing, ownPilo
               <select value={refIdx} onChange={(e) => { setRefIdx(+e.target.value); computePreview(file, { refIdx: +e.target.value, task, round, pilotId }); }}>
                 {refs.map((r, i) => <option key={i} value={i}>{r.name}</option>)}
               </select>
+              {planned(pilotId, task, round) != null && <span className="sub small">{planned(pilotId, task, round) === refIdx ? 'El del orden de salida.' : `El orden de salida dice ${refs[planned(pilotId, task, round)!]?.name}.`}</span>}
             </label>
           )}
         </div>

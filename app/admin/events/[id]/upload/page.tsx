@@ -12,7 +12,7 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   await requireRole('admin', 'judge');
   const supabase = await createClient();
-  const { data: ev } = await supabase.from('events').select('id, name, cfg, lane, refs, sep_check, units, mode, rounds, tiebreak').eq('id', id).maybeSingle<EventRow>();
+  const { data: ev } = await supabase.from('events').select('id, name, cfg, lane, refs, sep_check, units, mode, rounds, tiebreak, exit_order, pass_size, task_order').eq('id', id).maybeSingle<EventRow>();
   if (!ev) notFound();
   const [{ data: pilots }, { data: jumps }] = await Promise.all([
     supabase.from('pilots').select('id, name').order('name'),

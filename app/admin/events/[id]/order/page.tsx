@@ -4,7 +4,8 @@ import { requireRole } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import type { EventRow } from '@/lib/data/rows';
 import { TASK_LABEL } from '@/lib/jumps/score';
-import { passPlan, taskOrder } from '@/lib/standings/order';
+import { assignedRefs, passPlan, taskOrder, type RoundOrder } from '@/lib/standings/order';
+import { ManualOrder, RefPick } from './manual-order';
 import { StateForm } from '../state-form';
 import { PrintButton } from '../report/print-button';
 
@@ -26,7 +27,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const name = (pid: string) => (pilots ?? []).find((p) => p.id === pid)?.name ?? 'Piloto borrado';
   // Participants: the chosen list, or else those with jumps.
   const roster = Array.isArray(ev.roster) && ev.roster.length ? (ev.roster as string[]) : [...new Set((jumpPilots ?? []).map((j) => j.pilot_id as string))];
-  const order = (ev.exit_order ?? {}) as Record<string, { ids: string[]; how: string; at: number; by?: string }>;
+  const order = (ev.exit_order ?? {}) as Record<string, RoundOrder>;
+  const refNames = ev.lane ? ((ev.refs ?? []) as { name: string }[]).map((r, i) => r.name || `Punto ${i + 1}`) : [];
+  const names = Object.fromEntries((pilots ?? []).map((p) => [p.id, p.name]));
   const tasks = taskOrder(ev.task_order), passSize = ev.pass_size ?? 5;
   const flown = Math.max(0, ...Object.keys(order).map(Number));
   const rounds = ev.mode === 'competition' ? ev.rounds : Math.max(3, flown, Math.min(20, +(sp.rounds ?? 0) || 0));
@@ -56,6 +59,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
       {Array.from({ length: rounds }, (_, i) => i + 1).map((r) => {
         const o = order[r];
+        const pts = assignedRefs(o, passSize, tasks, refNames.length);
+        // The hand-ordered list starts from the current order (or the participants), with new participants at the end.
+        const manualStart = [...(o?.ids ?? []).filter((x) => roster.includes(x)), ...roster.filter((x) => !(o?.ids ?? []).includes(x))];
         return (
           <section key={r} className="stack order-round">
             <h2>Ronda {r}</h2>
@@ -73,6 +79,13 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               </StateForm>
               {o && <StateForm event={id} op="order-clear" hidden={{ round: r }} submit="Borrar" />}
             </div>
+            {roster.length > 0 && (
+              <details className="noprint">
+                <summary>Ordenar a mano (no oficial)</summary>
+                <p className="sub small">Para entrenamientos o cuando el orden se decide en la DZ. Queda marcado como “Manual (no oficial)”.</p>
+                <ManualOrder event={id} round={r} initial={manualStart} names={names} />
+              </details>
+            )}
             {o && (
               <>
                 <p className="small">{o.how}{o.by ? `, ${o.by}` : ''}, {when(o.at)}</p>
@@ -80,11 +93,19 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   {passPlan(o.ids, passSize, tasks).map((tk, k) => (
                     <div key={tk.task}>
                       <h3>{k + 1}. {TASK_LABEL[tk.task]}</h3>
-                      {tk.passes.map((p, i) => <div key={i} className="pass"><b>Pasada {i + 1}</b><ol>{p.map((pid) => <li key={pid}>{name(pid)}</li>)}</ol></div>)}
+                      {tk.passes.map((p, i) => <div key={i} className="pass"><b>Pasada {i + 1}</b><ol>{p.map((pid) => {
+                        const ref = pts[tk.task]?.[pid];
+                        return (
+                          <li key={pid}>{name(pid)}{ref != null && (
+                            <> <span className="ref-print">→ {refNames[ref]}</span>
+                              <RefPick event={id} round={r} task={tk.task} pilot={pid} value={ref} refs={refNames} /></>
+                          )}</li>
+                        );
+                      })}</ol></div>)}
                     </div>
                   ))}
                 </div>
-                <p className="sub small">Entre tareas rotan las pasadas y el orden dentro de cada pasada (FAI 5.5.6).</p>
+                <p className="sub small">Entre tareas rotan las pasadas y el orden dentro de cada pasada (FAI 5.5.6).{refNames.length > 0 && ' Punto de referencia: la salida 1 de cada pasada va al primer punto, la 2 al segundo, y así; como el orden rota, cada uno pasa por distintos puntos. Se puede cambiar el de cada piloto: queda en el historial y se preelige al cargar su salto.'}</p>
               </>
             )}
           </section>
