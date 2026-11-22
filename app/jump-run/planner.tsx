@@ -18,7 +18,11 @@ const n = (s: string) => parseFloat(s.replace(',', '.'));
 const deg = (d: number) => `${String(Math.round(((d % 360) + 360) % 360) || 360).padStart(3, '0')}°`;
 
 interface Inputs { windFrom: string; windKt: string; tasKt: string; exits: string; gap: string; upwind: string; side: 1 | -1 }
-const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', upwind: '1500', side: 1 };
+// Upwind distance by default: the flyer glides ~2.5 (horizontal / height) from the exit (FAI: 10.500–11.000 ft)
+// down to the opening (~3.500 ft), so the run goes that far from the landing: 2.5 × 7.250 ft ≈ 5.500 m.
+const GLIDE = 2.5, EXIT_FT = 10750, OPEN_FT = 3500;
+const UPWIND = String(Math.round((GLIDE * (EXIT_FT - OPEN_FT) * 0.3048) / 100) * 100);
+const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', upwind: UPWIND, side: 1 };
 
 interface Hour { time: string; w700: [number, number]; w850: [number, number]; w10: [number, number]; gust: number }
 
@@ -38,7 +42,8 @@ export function Planner() {
       const p = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null');
       if (p?.landing) setLanding(p.landing);
       if (Array.isArray(p?.refs)) setRefs(p.refs);
-      if (p?.inputs) setInp({ ...DEFAULTS, ...p.inputs });
+      // 1500 was the old default (too close: the flyers opened past the landing); move it to the glide one.
+      if (p?.inputs) setInp({ ...DEFAULTS, ...p.inputs, ...(p.inputs.upwind === '1500' ? { upwind: UPWIND } : {}) });
     } catch { /* start fresh */ }
     setLoaded(true);
   }, []);
@@ -137,6 +142,7 @@ export function Planner() {
         {field('gap', 'Separación entre salidas, mínimo 600', 'm')}
         {field('upwind', 'Centro de la pasada a barlovento del aterrizaje', 'm')}
       </div>
+      <p className="sub small">Barlovento: por defecto {UPWIND} m, un planeo de 2,5 desde la salida (~10.750 ft) hasta la apertura (~3.500 ft). Si los pilotos llegan a la apertura muy encima del aterrizaje, alejala; si quedan cortos, acercala.</p>
       {n(inp.gap) < 600 && <p className="error" role="alert">La FAI pide al menos 600 m entre salidas (5.5.4).</p>}
       <div className="seg" role="group" aria-label="Sentido de la pasada">
         {([1, -1] as const).map((s) => (
