@@ -592,7 +592,8 @@
   document.addEventListener('visibilitychange', () => { if (running) wake(); });
 
   // ---- Clock ----
-  // `ready`: the counter reached zero (or the first point), so a tap counts as an exit. Nobody exits before that.
+  // `ready`: the counter reached zero (or the first point): shows the hand. A tap counts as an exit at any time
+  // (if the plane does not pass right over the point, the counter would never reach zero).
   let cfg = null, running = false, exits = [], target = 0, minDist = Infinity, passed = false, timer = null, buzzed = false, ready = false;
   // Seconds as s up to a minute, then m:ss.
   const secs = (n) => n < 60 ? n + ' s' : Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
@@ -675,12 +676,10 @@
     clearInterval(timer); timer = setInterval(render, 100); render();
   };
 
-  // A tap anywhere marks an exit, only once the counter is at zero.
+  // A tap anywhere marks an exit, at any time during the jump run.
   $('clock').addEventListener('pointerdown', (e) => {
     if (e.target.closest('button')) return;
     if (!running) return;
-    render();
-    if (!ready) return;
     const now = Date.now();
     const gs = groundSpeed();
     target = Math.ceil(cfg.gap / gs.v); // rounded up: never under the separation
