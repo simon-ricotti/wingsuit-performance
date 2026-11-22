@@ -455,15 +455,22 @@
     pushWind(m.S, c.cx, c.cy, c.r, c.rms, c.rms < 1.5 && spread >= targetOf(m), m.ias ? 'IAS ' + m.mph + ' mph' : 'curva');
   }
 
-  // Average below the band (vector mean of the good rows, or of all if none is good) and the last one above it.
+  // Average below the band and the last one above it. The average is a vector mean (as the drift adds up) weighted by
+  // layer: sorted by altitude, each measurement stands for the slice from halfway to the one below to halfway to the one
+  // above (the lowest from the ground, the highest up to the band top). Good rows only, or all if none is good.
   function bandSummary() {
     const top = (cfg && cfg.band) || 5000, mid = (w) => w.altMin == null ? null : (w.altMin + w.altMax) / 2 / 0.3048;
-    const low = winds.filter((w) => mid(w) != null && mid(w) <= top), good = low.filter((w) => w.ok), use = good.length ? good : low;
+    const low = winds.filter((w) => mid(w) != null && mid(w) <= top), good = low.filter((w) => w.ok);
+    const use = (good.length ? good : low).slice().sort((a, b) => mid(a) - mid(b));
     let lowRes = null;
     if (use.length) {
-      let x = 0, y = 0;
-      for (const w of use) { x -= w.kt * Math.sin(w.from * Math.PI / 180); y -= w.kt * Math.cos(w.from * Math.PI / 180); }
-      x /= use.length; y /= use.length;
+      let x = 0, y = 0, sum = 0;
+      use.forEach((w, i) => {
+        const lo = i === 0 ? 0 : (mid(use[i - 1]) + mid(w)) / 2, hi = i === use.length - 1 ? top : (mid(w) + mid(use[i + 1])) / 2;
+        const k = Math.max(hi - lo, 1);
+        x -= k * w.kt * Math.sin(w.from * Math.PI / 180); y -= k * w.kt * Math.cos(w.from * Math.PI / 180); sum += k;
+      });
+      x /= sum; y /= sum;
       lowRes = { from: Math.round(((Math.atan2(-x, -y) * 180 / Math.PI) + 360) % 360), kt: Math.round(Math.hypot(x, y)), n: use.length, ok: good.length > 0 };
     }
     const high = winds.filter((w) => mid(w) != null && mid(w) > top).pop() || null;
@@ -491,7 +498,7 @@
     const sm = bandSummary(), topTxt = Math.round(sm.top).toLocaleString('es-AR');
     $('sLow').className = sm.low && !sm.low.ok ? 'doubt' : '';
     $('sLow').innerHTML = '<div class="lab">0–' + topTxt + ' ft</div>' + (sm.low
-      ? '<div class="v">' + deg3(sm.low.from) + ' · ' + sm.low.kt + ' kt</div><div class="s">promedio de ' + sm.low.n + (sm.low.n === 1 ? ' medición' : ' mediciones') + '</div>'
+      ? '<div class="v">' + deg3(sm.low.from) + ' · ' + sm.low.kt + ' kt</div><div class="s">' + (sm.low.n === 1 ? '1 medición' : 'promedio por capas de ' + sm.low.n) + '</div>'
       : '<div class="v">–</div><div class="s">sin mediciones</div>');
     $('sHigh').className = sm.high && !sm.high.ok ? 'doubt' : '';
     $('sHigh').innerHTML = '<div class="lab">Arriba de ' + topTxt + ' ft</div>' + (sm.high
