@@ -26,7 +26,15 @@ function loadThree(): Promise<void> {
 }
 
 export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; task: Task; cfg: ScoreConfig; altFt: boolean }) {
-  const pts = useMemo(() => items.map((it) => engine.unpackTrack(it.packed)), [items]);
+  // If the GPS did not record the exit or the window entry (signal lost in the plane), the track starts after them and
+  // the replay could not place that flyer: it shows still at its first recorded point until the data starts.
+  const tracks = useMemo(() => items.map((it) => {
+    const p = engine.unpackTrack(it.packed), times = [it.jump.tExit, it.jump.tVal, it.jump.tTop].filter((t): t is number => typeof t === 'number');
+    const t0 = Math.min(...times);
+    return p.length && t0 < p[0].t ? { pts: [{ ...p[0], t: t0 }, ...p], late: typeof it.jump.tTop === 'number' && it.jump.tTop < p[0].t } : { pts: p, late: false };
+  }), [items]);
+  const pts = useMemo(() => tracks.map((t) => t.pts), [tracks]);
+  const late = items.filter((_, i) => tracks[i].late).map((it) => it.name);
   const [off, setOff] = useState<Record<string, boolean>>({});
   const [sync, setSync] = useState('window');
   const [plan, setPlan] = useState('race');
@@ -80,6 +88,7 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
           </label>
         ))}
       </div>
+      {late.length > 0 && <p className="sub small" role="status">{late.join(', ')}: el GPS no grabó la entrada a la ventana; se muestra quieto en su primer punto hasta que empiezan los datos.</p>}
       <div id="rp-stage" className="stack">
         <div className="replay">
           <div className="view3d" id="rp-3d">
