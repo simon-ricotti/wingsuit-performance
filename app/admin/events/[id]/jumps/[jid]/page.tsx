@@ -6,7 +6,7 @@ import { rowToJump, type EventRow, type JumpRow, type ReviewRow } from '@/lib/da
 import type { PackedTrack, RefPoint } from '@/lib/engine';
 import { judgingOf } from '@/lib/events/settings';
 import { eventConfig, roundName, TASK_LABEL, TASK_UNIT } from '@/lib/jumps/score';
-import { eventStandings, fmt, fmtTask, jumpStatus, pendingDecisions } from '@/lib/standings/views';
+import { eventStandings, fmt, fmtTask, jumpStatus, laneEdge, pendingDecisions } from '@/lib/standings/views';
 import { JumpResult } from '../../../../jumps/jump-result';
 import { ReviewCharts } from './review-charts';
 import { DecisionsForm, DeleteJump, SignForms, VerifyFile, type DecisionValues } from './review-forms';
@@ -42,14 +42,14 @@ export default async function JumpPage({ params }: { params: Promise<{ id: strin
   const refPoint = ev.lane && j.refIdx != null ? refs[j.refIdx as number] ?? null : null;
   const revs = (j.reviews as { name: string; at: number }[]) ?? [];
   const flagged = ((j.flags as { code: string }[]) ?? []).some((f) => ['sep', 'hz', 'gap', 'exit_low', 'exit_high'].includes(f.code));
-  const laneEdge = j.laneDev != null && [300, 450, 600].some((th) => Math.abs((j.laneDev as number) - th) < 15);
+  const atEdge = laneEdge(j, cfg.laneWidth);
   const str = (v: unknown) => (v == null ? '' : String(v));
   const decisions: DecisionValues = {
     flagged, flag: str(j.flagDecision),
     flagLabel: J.gpsRule === 'rejump' || J.exitRule === 'rejump' ? 'Pendiente' : 'Solo aviso, según el perfil',
     lane: { show: j.laneDev != null, value: str(j.laneDecision), shift: str(j.laneShift ?? 0).replace('.', ','),
       refs: ev.lane ? refs.map((r) => (r as RefPoint & { name?: string }).name ?? '') : [], refIdx: str(j.refIdx),
-      label: `Carril: propuesta ${j.lanePen} % (${fmt(j.laneOutside as number, 0)} m afuera)${laneEdge ? ', al límite' : ''}` },
+      label: `Carril: propuesta ${j.lanePen} % (${fmt(j.laneOutside as number, 0)} m afuera)${atEdge ? ', al límite' : ''}` },
     sep: { show: !!j.sepViolation, value: j.sepApply == null ? '' : j.sepApply ? 'yes' : 'no', label: `Separación: ${fmt(j.sepMin as number, 0)} m de ${name(String(j.sepWith))}` },
     exit: { show: J.door !== 'none', value: str(j.exitPen ?? 0), label: `Salida, según ${J.door === 'fd' ? 'el Flight Director' : 'el cronómetro y el video'}` },
     manual: str(j.penManual), notes: str(j.notes),

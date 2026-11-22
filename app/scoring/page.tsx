@@ -20,7 +20,7 @@ export default function ScoringPage() {
         <ul>
           <li><b>Ventana de validación:</b> empieza 9 s después de que la velocidad vertical llega por primera vez a 10 m/s y termina 20 m por debajo de la ventana (2.2).</li>
           <li><b>Precisión:</b> el GPS debe registrar a 5 Hz o más y cada muestra de la ventana de validación debe tener SEP menor a 10 m (3.1.1, 5.7.4). Si no, el salto queda marcado: en competencia corresponde re-salto.</li>
-          <li><b>Carril:</b> 600 m de ancho, centrado en la recta que va desde la posición al inicio de la validación hasta el punto de referencia asignado (2.2). Salirse menos de 150 m resta 10%; entre 150 y 300 m, 20%; más de 300 m, 50% la primera vez y cero las siguientes (5.6.2).</li>
+          <li><b>Carril:</b> 600 m de ancho (la jornada puede usar otro ancho, y lo muestra como diferencia con la FAI), centrado en la recta que va desde la posición al inicio de la validación hasta el punto de referencia asignado (2.2). Salirse menos de 150 m resta 10%; entre 150 y 300 m, 20%; más de 300 m, 50% la primera vez y cero las siguientes (5.6.2).</li>
           <li><b>Separación:</b> pasar a menos de 150 m de otro competidor entre el inicio de la validación y la apertura da cero (5.6.3).</li>
         </ul>
         <h2>Puntaje</h2>
@@ -35,7 +35,7 @@ export default function ScoringPage() {
         <ul>
           <li><b>FAI estricto:</b> dos jueces revisan cada salto (7.1.2); un GPS de menos de 5 Hz, una muestra con SEP de 10 m o más o una salida fuera de 3200–3353 m piden la decisión del juez: validar o conceder re-salto (3.1.1, 5.4.5, 5.4.6, 5.7.4); las salidas las controla un Flight Director a bordo (4.1.3).</li>
           <li><b>Argentina (club y entrenamiento):</b> una revisión por salto, esos casos se marcan pero se puntúan, y las salidas se controlan con cronómetro y cámara. Cada punto se puede cambiar por jornada, y la jornada muestra siempre en qué difiere del reglamento FAI.</li>
-          <li><b>Lo que propone la plataforma y lo que decide el juez:</b> la penalidad de carril es una propuesta. Si el desvío queda a menos de 15 m de un cambio de nivel (300, 450 o 600 m del eje), el juez tiene que confirmarla. El juez también puede corregir el inicio del carril y decide si aplica el cero por separación, si hubo salida fuera de tiempo y si corresponde re-salto.</li>
+          <li><b>Lo que propone la plataforma y lo que decide el juez:</b> la penalidad de carril es una propuesta. Si el desvío queda a menos de 15 m de un cambio de nivel (el borde del carril, 150 o 300 m afuera; con 600 m: 300, 450 o 600 m del eje), el juez tiene que confirmarla. El juez también puede corregir el inicio del carril y decide si aplica el cero por separación, si hubo salida fuera de tiempo y si corresponde re-salto.</li>
           <li><b>Validación:</b> una tarea se valida cuando todos sus saltos están revisados (5.4.2). Si después cambia un salto, la tarea vuelve a quedar provisoria.</li>
           <li><b>Registro:</b> cada carga, reemplazo, decisión, firma y validación queda en el historial con fecha y el usuario de quien lo hizo; las firmas de revisión son de usuarios con rol de juez, y dos firmas son siempre de dos usuarios distintos. Un salto reemplazado, por ejemplo por un re-salto, queda archivado.</li>
         </ul>

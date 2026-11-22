@@ -45,7 +45,7 @@ export interface EventFormValues {
   id: string | null;
   name: string; date: string; mode: EventMode; rounds: string; teamSize: string; dz: string; units: 'm' | 'ft';
   elev: string; top: string; bottom: string; exitMin: string; exitMax: string;
-  lane: boolean; sepCheck: boolean; refs: string; pilotUploads: boolean;
+  lane: boolean; laneWidth: string; sepCheck: boolean; refs: string; pilotUploads: boolean;
   judging: Judging; jumpRun: JumpRun | null;
 }
 
@@ -61,7 +61,7 @@ export function formValuesOf(ev: EventRow | null, today: string): EventFormValue
     elev: ev && (ev.cfg as Record<string, unknown>).elev != null ? altitudeIn(cfg.elev, ft) : '',
     top: altitudeIn(cfg.top, ft), bottom: altitudeIn(cfg.bottom, ft),
     exitMin: altitudeIn(cfg.exitMin, ft), exitMax: altitudeIn(cfg.exitMax, ft),
-    lane: ev ? ev.lane : true, sepCheck: ev ? ev.sep_check : true, pilotUploads: ev?.pilot_uploads ?? false,
+    lane: ev ? ev.lane : true, laneWidth: String(cfg.laneWidth), sepCheck: ev ? ev.sep_check : true, pilotUploads: ev?.pilot_uploads ?? false,
     refs: refs.map((r) => `${r.name}, ${r.lat}, ${r.lon}`).join('\n'),
     judging: judgingOf(ev?.judging), jumpRun: ev?.jump_run ?? null,
   };
@@ -110,6 +110,8 @@ export function parseEventSettings(f: Record<string, string | undefined>): Event
   const bottom = toMetres(num(f.bottom, dv(DEFAULT_CFG.bottom)), ft);
   if (!isFinite(elev)) throw new SettingsError('Falta la elevación del DZ sobre el nivel del mar.');
   if (!(top > bottom)) throw new SettingsError('El límite superior de la ventana tiene que ser mayor que el inferior.');
+  const laneWidth = Math.round(num(f.laneWidth, DEFAULT_CFG.laneWidth));
+  if (!(laneWidth >= 100 && laneWidth <= 2000)) throw new SettingsError('El ancho del carril tiene que estar entre 100 y 2000 m.');
   const name = (f.name ?? '').trim();
   if (!name) throw new SettingsError('Poné un nombre para la jornada.');
   const date = /^\d{4}-\d\d-\d\d$/.test(f.date ?? '') ? f.date! : null;
@@ -123,6 +125,9 @@ export function parseEventSettings(f: Record<string, string | undefined>): Event
       elev, top, bottom,
       exitMin: toMetres(num(f.exitMin, dv(DEFAULT_CFG.exitMin)), ft),
       exitMax: toMetres(num(f.exitMax, dv(DEFAULT_CFG.exitMax)), ft),
+      // Lane width in metres (FAI 2.2: 600). Stored only when it differs, so saving an FAI event does not change its cfg.
+      // The penalty bands stay as in 5.6.2, measured from the lane edge.
+      ...(laneWidth !== DEFAULT_CFG.laneWidth ? { laneWidth } : {}),
     },
     judging: {
       profile,
@@ -156,6 +161,7 @@ export function profileDiffs(ev: EventSummary): string[] {
   if (Math.abs(c.top - 2500) > 1 || Math.abs(c.bottom - 1500) > 1) out.push(`ventana ${Math.round(c.top)}–${Math.round(c.bottom)} m`);
   if (Math.abs(c.exitMin - 3200) > 1 || Math.abs(c.exitMax - 3353) > 1) out.push(`salida ${Math.round(c.exitMin)}–${Math.round(c.exitMax)} m`);
   if (!ev.lane) out.push('sin carril');
+  else if (c.laneWidth !== DEFAULT_CFG.laneWidth) out.push(`carril de ${c.laneWidth} m (FAI: ${DEFAULT_CFG.laneWidth} m)`);
   if (!ev.sep_check) out.push('sin control de separación');
   if (ev.mode === 'competition' && ev.rounds !== 3) out.push(`${ev.rounds} ronda${ev.rounds === 1 ? '' : 's'} (FAI: 3)`);
   return out;

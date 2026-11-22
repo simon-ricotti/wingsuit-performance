@@ -18,6 +18,8 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
   const [judging, setJudging] = useState<Judging>(initial.judging);
   const [refsText, setRefsText] = useState(initial.refs);
   const [jumpRun, setJumpRun] = useState(initial.jumpRun);
+  const [laneWidth, setLaneWidth] = useState(initial.laneWidth);
+  const laneM = Number(laneWidth) >= 100 ? Number(laneWidth) : 600; // for the map while it is being typed
   // The list is the source of truth; while a line is half typed the map keeps the last valid points.
   const lastRefs = useRef<RefPoint[]>([]);
   const mapRefs = useMemo(() => { try { lastRefs.current = parseRefs(refsText); } catch { /* keep last */ } return lastRefs.current; }, [refsText]);
@@ -89,6 +91,9 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
         {alt('exitMax', 'Salida máxima')}
         <Select name="lane" label="Carril designado" initial={initial.lane ? '1' : '0'}
           options={[['1', 'Aplicar penalidades de carril'], ['0', 'No evaluar carril']]} />
+        <label className="field">Ancho del carril (m, FAI: 600)
+          <input name="laneWidth" inputMode="numeric" value={laneWidth} onChange={(e) => setLaneWidth(e.target.value)} />
+        </label>
         <Select name="sepCheck" label="Separación entre competidores" initial={initial.sepCheck ? '1' : '0'}
           options={[['1', 'Cero si pasan a menos de 150 m'], ['0', 'No evaluar']]} />
       </div>
@@ -101,8 +106,9 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
         {plan && plan.refs.length > 0 && <button type="button" className="secondary" onClick={() => { fromMap(plan.refs); setFit((f) => f + 1); }}>Usar sus {plan.refs.length} puntos</button>}
         <Link href="/jump-run" className="small">Calcular la pasada con el viento</Link>
       </div>
-      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={600} fitKey={String(fit)} />
-      <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de 600 m desde cada salida a su punto (la salida 1 al punto 1, la 2 al 2, y así); el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
+      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={laneM} fitKey={String(fit)} />
+      <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de {laneM} m desde cada salida a su punto (la salida 1 al punto 1, la 2 al 2, y así); el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
+      <p className="sub small">Las penalidades de carril son las de la FAI (5.6.2), medidas desde el borde del carril: hasta 150 m afuera −10 %, de 150 a 300 m −20 % y más de 300 m −50 %. Con un carril de {laneM} m: sin penalidad hasta {laneM / 2} m del eje, −10 % hasta {laneM / 2 + 150} m, −20 % hasta {laneM / 2 + 300} m y −50 % más allá.</p>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento
         FAI 2026. La unidad elegida se usa para cargar y mostrar las alturas de esta jornada; los resultados siguen en segundos, metros y km/h.</p>
 

@@ -1,6 +1,6 @@
 // Standings views on top of the engine's standings (5.10): overall, per task, female and teams.
 // Ports tabTable/classView/teamTable and jumpStatus/pendingDecisions from legacy/src/app.js.
-import { roundHalfUp, standings, TASKS, type JumpRecord, type StandingRow, type Standings, type Task } from '../engine';
+import { DEFAULT_CFG, roundHalfUp, standings, TASKS, type JumpRecord, type StandingRow, type Standings, type Task } from '../engine';
 import { judgingOf } from '../events/settings';
 import type { EventRow } from '../data/rows';
 
@@ -66,23 +66,27 @@ export function teamRows(ev: Pick<EventRow, 'team_size' | 'team_pick'>, st: Stan
 }
 
 // ---------- judging status of a jump ----------
-const laneEdge = (j: JumpRecord) => j.laneDev != null && [300, 450, 600].some((th) => Math.abs((j.laneDev as number) - th) < 15);
+/** Deviation within 15 m of a penalty step (5.6.2: the lane edge, 150 m and 300 m outside it), for the event's lane width. */
+export function laneEdge(j: JumpRecord, laneWidth: number = DEFAULT_CFG.laneWidth): boolean {
+  const half = laneWidth / 2;
+  return j.laneDev != null && [half, half + 150, half + 300].some((th) => Math.abs((j.laneDev as number) - th) < 15);
+}
 
 /** Decisions the judge still has to make on a jump. */
-export function pendingDecisions(ev: Pick<EventRow, 'judging' | 'lane'>, j: JumpRecord): string[] {
+export function pendingDecisions(ev: Pick<EventRow, 'judging' | 'lane'> & { cfg?: EventRow['cfg'] }, j: JumpRecord): string[] {
   const J = judgingOf(ev.judging), out: string[] = [];
   const flags = (j.flags as { code: string }[]) ?? [];
   const gps = flags.some((f) => ['sep', 'hz', 'gap'].includes(f.code));
   const exit = flags.some((f) => f.code === 'exit_low' || f.code === 'exit_high');
   if (((J.gpsRule === 'rejump' && gps) || (J.exitRule === 'rejump' && exit)) && !j.flagDecision) out.push('validar el salto o conceder re-salto');
-  if (ev.lane && laneEdge(j) && (j.laneDecision == null || j.laneDecision === '')) out.push('confirmar la penalidad de carril, que está al límite');
+  if (ev.lane && laneEdge(j, ({ ...DEFAULT_CFG, ...((ev.cfg ?? {}) as object) } as typeof DEFAULT_CFG).laneWidth) && (j.laneDecision == null || j.laneDecision === '')) out.push('confirmar la penalidad de carril, que está al límite');
   if (j.sepViolation && j.sepApply == null) out.push('decidir si se aplica el cero por separación');
   return out;
 }
 
 export type JumpStatus = { code: 'void' | 'decide' | 'ok' | 'pending'; label: string };
 
-export function jumpStatus(ev: Pick<EventRow, 'judging' | 'lane'>, j: JumpRecord): JumpStatus {
+export function jumpStatus(ev: Pick<EventRow, 'judging' | 'lane'> & { cfg?: EventRow['cfg'] }, j: JumpRecord): JumpStatus {
   if (j.void) return { code: 'void', label: 'Anulado por re-salto' };
   if (pendingDecisions(ev, j).length) return { code: 'decide', label: 'Falta una decisión del juez' };
   const n = ((j.reviews as unknown[]) ?? []).length, need = judgingOf(ev.judging).reviews;
