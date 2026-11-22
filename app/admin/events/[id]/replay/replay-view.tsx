@@ -1,6 +1,6 @@
 'use client';
-// Replay of a pass: legacy/src/replay.js (2D views and live board) mounted as it is, and a copy of replay3d.js
-// (three.js r128) with in-flight data on each flyer. They read the engine from window.WSP and their data from window.WSApp.
+// Replay of a pass: legacy/src/replay.js (2D views and live board) and replay3d.js (three.js r128)
+// mounted as they are. They read the engine from window.WSP and their data from window.WSApp.
 import { useEffect, useMemo, useState } from 'react';
 import * as engine from '@/lib/engine';
 import type { JumpRecord, PackedTrack, RefPoint, ScoreConfig, Task } from '@/lib/engine';
@@ -10,7 +10,7 @@ import { SatMap, type MapTrack } from '@/app/ui/sat-map';
 
 export interface ReplayItem { jump: JumpRecord; packed: PackedTrack; name: string; color: string; ref: RefPoint | null }
 
-type Legacy = { Replay: { mount(): Promise<void>; toggle(): void; restart(): void; setSpeed(s: number): void; stop(): void }; Replay3D?: { setMode(m: string): void; setData(on: boolean): void } };
+type Legacy = { Replay: { mount(): Promise<void>; toggle(): void; restart(): void; setSpeed(s: number): void; stop(): void }; Replay3D?: { setMode(m: string): void } };
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
 function loadThree(): Promise<void> {
@@ -32,7 +32,6 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
   const [plan, setPlan] = useState('race');
   const [speed, setSpeed] = useState(4);
   const [cam, setCam] = useState('auto');
-  const [data, setData] = useState(true);
   const num = (v: unknown) => (typeof v === 'number' ? v : null);
   // Each pilot's lane as the engine measures it: from the start of validation to their point (2.2, 5.6.2).
   const mapTracks = useMemo<MapTrack[]>(() => items.map((it, i) => {
@@ -56,9 +55,9 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
     };
     (async () => {
       await loadThree();
-      await import('@/app/admin/events/[id]/replay/replay3d.js');
+      await import('@/legacy/src/replay3d.js');
       await import('@/legacy/src/replay.js');
-      if (!cancelled) { await w.Replay.mount(); w.Replay3D?.setData(data); }
+      if (!cancelled) await w.Replay.mount();
     })();
     return () => { cancelled = true; w.Replay?.stop(); };
     // speed and cam are applied live below, without rebuilding.
@@ -102,7 +101,6 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
             ))}
           </div>
           <button type="button" onClick={fullscreen}>Pantalla completa</button>
-          <button type="button" className="secondary" aria-pressed={data} onClick={() => { setData(!data); (window as unknown as Legacy).Replay3D?.setData(!data); }}>{data ? 'Ocultar datos' : 'Mostrar datos'}</button>
           <label className="field">Cámara
             <select value={cam} onChange={(e) => { setCam(e.target.value); (window as unknown as Legacy).Replay3D?.setMode(e.target.value); }}>
               <option value="auto">Automática</option><option value="behind">Desde atrás</option><option value="side">De costado</option><option value="top">Desde arriba</option>

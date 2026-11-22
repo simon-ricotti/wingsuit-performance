@@ -56,7 +56,6 @@ Idioma del código: **inglés** (identificadores, comentarios, nombres de archiv
   - limpiar los archivos que quedan en `originals/incoming/` si una subida no se completa;
   - el ranking histórico lee todos los saltos en cada visita (pasar a una tabla resumen si crece mucho);
   - el reproductor 3D carga three.js r128 desde cdnjs.
-  - `app/admin/events/[id]/replay/replay3d.js` es una copia de `legacy/src/replay3d.js` con los datos en vuelo (tiempo, velocidad, distancia proyectada en el piso de la ventana, etiquetas sin superponerse); `legacy/` sigue intacto como referencia.
 
 ## Cómo se trabaja
 - **Siempre simple (ponytail, nivel full):** seguir `.claude/skills/ponytail/SKILL.md` en todo el desarrollo. Es el cambio más chico que resuelve todo, sin abstracciones, opciones ni dependencias que nadie pidió. Nunca se recorta la validación en el servidor, el manejo de errores que evita perder datos, la seguridad ni la accesibilidad.

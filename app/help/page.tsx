@@ -136,7 +136,7 @@ export default function HelpPage() {
       <ul>
         <li>Cuando todos los saltos de una tarea de una ronda están revisados, <i>Validar tarea</i> (debajo de la clasificación). Si después cambia un salto de esa tarea, se reabre sola; cambiar solo las notas no la reabre.</li>
         <li>Antes de cada ronda nueva, en <i>Orden de salida</i> → <i>Armar orden</i>: usa la clasificación de la jornada hasta ese momento.</li>
-        <li><i>Replay</i> muestra la tanda en 3D con la tabla en vivo (cada flyer con su tiempo en la ventana y su velocidad, y debajo, en el piso de la ventana, una cinta con la distancia recorrida; <i>Ocultar datos</i> los saca) y, abajo, los tracks sobre el satélite con el carril y las franjas de cada piloto: sirve para explicar un resultado a los pilotos.</li>
+        <li><i>Replay</i> muestra la tanda en 3D con la tabla en vivo y, abajo, los tracks sobre el satélite con el carril y las franjas de cada piloto: sirve para explicar un resultado a los pilotos.</li>
         <li>Para comprobar que un archivo es el mismo que se cargó, en el detalle del salto usá <i>Verificar un archivo</i> (compara la huella, no sube nada).</li>
       </ul>
 
