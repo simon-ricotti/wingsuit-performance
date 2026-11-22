@@ -61,6 +61,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
   const fitted = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState<'ref' | 'run'>('ref');
+  const [labels, setLabels] = useState(true);
   const pendingA = useRef<LatLon | null>(null);
   // Latest props for the Leaflet click handler (registered once).
   const latest = useRef({ refs, onRefsChange, onJumpRunChange, mode });
@@ -96,6 +97,16 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
     if (!ready || !Lf || !m || !g) return;
     g.clearLayers();
     const bounds: [number, number][] = [];
+    // Labels without a box (text with shadow); hidden ones show on hover or tap.
+    const tip = () => ({ permanent: labels, direction: 'right' as const, offset: [10, -14] as [number, number], className: 'maplabel' });
+    // Tapping a point copies its coordinates (for the door clock or a message).
+    const copy = (lat: number, lon: number) => {
+      const txt = `${round6(lat)}, ${round6(lon)}`;
+      // The coordinates always show; "Copiado" only if the browser let it copy.
+      const pop = Lf.popup({ closeButton: false, offset: [0, -8] }).setLatLng([lat, lon]).setContent(txt).openOn(m);
+      navigator.clipboard?.writeText(txt).then(() => pop.setContent(`Copiado: ${txt}`), () => {});
+      setTimeout(() => m.closePopup(pop), 2500);
+    };
     const half = laneWidth / 2;
 
     for (const t of tracks) {
@@ -119,10 +130,26 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       if (refs.length) slots.forEach(([lat, lon], i) => {
         for (const c of corridor({ lat, lon }, refs[i % refs.length], half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
       });
-      Lf.polyline([[jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]], { color: '#fff', weight: 3, dashArray: '8 6' }).addTo(g).bindTooltip('Pasada');
+      // Direction of the jump run (a → b): arrowheads along the line and its heading.
+      const pr = projector(jumpRun.a.lat, jumpRun.a.lon), k = pr(jumpRun.a.lat + 1, jumpRun.a.lon + 1), rb = pr(jumpRun.b.lat, jumpRun.b.lon);
+      const len = Math.hypot(rb[0], rb[1]);
+      const hdg = Math.round(((Math.atan2(rb[0], rb[1]) * 180 / Math.PI) + 360) % 360);
+      Lf.polyline([[jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]], { color: '#fff', weight: 3, dashArray: '8 6' }).addTo(g).bindTooltip(`Pasada, rumbo ${String(hdg).padStart(3, '0')}°`);
+      if (len > 1) {
+        const ux = rb[0] / len, uy = rb[1] / len, back = (x: number, y: number): [number, number] => [jumpRun.a.lat + y / k[1], jumpRun.a.lon + x / k[0]];
+        const size = Math.min(320, Math.max(120, len / 8));
+        // One between exits 1 and 2 (the start of the run) and one past the end.
+        for (const along of [Math.min(exitGap / 2, len / 2) + size / 2, len + size]) {
+          const tx = ux * along, ty = uy * along;
+          Lf.polygon([back(tx, ty), back(tx - ux * size - uy * size * 0.55, ty - uy * size + ux * size * 0.55), back(tx - ux * size + uy * size * 0.55, ty - uy * size - ux * size * 0.55)],
+            { color: '#fff', weight: 1, fillColor: '#fff', fillOpacity: 0.95, interactive: false }).addTo(g);
+        }
+      }
       slots.forEach((s, i) => {
         const to = refs.length ? ` → ${refs[i % refs.length].name || `Punto ${(i % refs.length) + 1}`}` : '';
-        Lf.circleMarker(s, { radius: 5, color: '#701968', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g).bindTooltip(`Salida ${i + 1}${to} (cada ${exitGap} m, 5.5.4)`);
+        const c = Lf.circleMarker(s, { radius: i === 0 ? 8 : 5, color: '#701968', weight: i === 0 ? 3 : 2, fillColor: '#fff', fillOpacity: 1, bubblingMouseEvents: false }).addTo(g);
+        c.bindTooltip(i === 0 ? 'Salida 1' : `Salida ${i + 1}${to}`, i === 0 ? tip() : { className: 'maplabel' });
+        c.on('click', () => copy(s[0], s[1]));
       });
       if (landing) Lf.polyline([[mid.lat, mid.lon], [landing.lat, landing.lon]], { color: '#fff', weight: 1, opacity: 0.8, dashArray: '2 6', interactive: false }).addTo(g);
       bounds.push([jumpRun.a.lat, jumpRun.a.lon], [jumpRun.b.lat, jumpRun.b.lon]);
@@ -138,7 +165,8 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
         return `${label} · ${(Math.hypot(q[0], q[1]) / 1000).toFixed(1).replace('.', ',')} km de la salida ${i + 1}`;
       };
       mk.on('drag', () => { const p = mk.getLatLng(); mk.setTooltipContent(text(p.lat, p.lng)); });
-      mk.bindTooltip(text(r.lat, r.lon), { permanent: true, direction: 'right', offset: [10, -14] });
+      mk.bindTooltip(text(r.lat, r.lon), tip());
+      mk.on('click', () => copy(r.lat, r.lon));
       if (onRefsChange) mk.on('dragend', () => {
         const p = mk.getLatLng();
         onRefsChange(refs.map((x, k) => (k === i ? { ...x, lat: round6(p.lat), lon: round6(p.lng) } : x)));
@@ -148,7 +176,8 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
 
     if (landing) {
       const mk = Lf.marker([landing.lat, landing.lon], { icon: Lf.divIcon({ className: 'refpin landpin', iconSize: [18, 18] }), draggable: !!onLandingChange, title: 'Aterrizaje', keyboard: true }).addTo(g);
-      mk.bindTooltip('Aterrizaje', { permanent: true, direction: 'right', offset: [10, -14] });
+      mk.bindTooltip('Aterrizaje', tip());
+      mk.on('click', () => copy(landing.lat, landing.lon));
       if (onLandingChange) mk.on('dragend', () => { const p = mk.getLatLng(); onLandingChange({ lat: round6(p.lat), lon: round6(p.lng) }); });
       bounds.push([landing.lat, landing.lon]);
     }
@@ -157,7 +186,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
     const key = tracks.map((t) => t.name).join('|') + '#' + fitKey;
     if (fitted.current !== key && bounds.length) m.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
     fitted.current = key;
-  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange, landing, onLandingChange, exitGap, fitKey]);
+  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange, landing, onLandingChange, exitGap, fitKey, labels]);
 
   return (
     <div className="stack">
@@ -174,6 +203,12 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
         <p className="sub small">{mode === 'ref'
           ? 'Tocá el mapa para agregar un punto de referencia; arrastralo para moverlo. El nombre y el borrado se editan en la lista.'
           : 'Tocá dónde empieza la pasada y después dónde termina. Los círculos marcan una salida cada 600 m (5.5.4).'}</p>
+      )}
+      {(refs.length > 0 || landing || jumpRun) && (
+        <div className="row">
+          <button type="button" className="secondary" aria-pressed={!labels} onClick={() => setLabels((v) => !v)}>{labels ? 'Ocultar nombres' : 'Mostrar nombres'}</button>
+          <span className="sub small">Tocá un punto o una salida para copiar sus coordenadas.</span>
+        </div>
       )}
       <div ref={box} className="satmap" style={{ height }} role="region" aria-label="Mapa satelital" />
     </div>
