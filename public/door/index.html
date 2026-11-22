@@ -308,20 +308,25 @@
     try { await loadLeaflet(); } catch { $('pickErr').textContent = 'El mapa necesita internet. Pegá o escribí el punto.'; return; }
     $('picker').style.display = 'flex';
     const m = $('point').value.split(/[\s,;]+/).map(num);
-    const start = m.length >= 2 && m.slice(0, 2).every(isFinite) ? [m[0], m[1]] : pos ? [pos.lat, pos.lon] : [-33.06, -60.62]; // AVA
+    const had = m.length >= 2 && m.slice(0, 2).every(isFinite) && Math.abs(m[0]) <= 90 && Math.abs(m[1]) <= 180;
+    const start = had ? [m[0], m[1]] : pos ? [pos.lat, pos.lon] : [-33.06, -60.62]; // AVA
     if (!pmap) {
       pmap = L.map('pmap', { zoomControl: true });
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagen © Esri' }).addTo(pmap);
-      pmap.on('click', (e) => {
-        picked = { lat: Math.round(e.latlng.lat * 1e6) / 1e6, lon: Math.round(e.latlng.lng * 1e6) / 1e6 };
-        if (pmark) pmark.setLatLng(e.latlng); else pmark = L.circleMarker(e.latlng, { radius: 10, color: '#fff', weight: 3, fillColor: '#9b2a8f', fillOpacity: 1 }).addTo(pmap);
-        $('pUse').disabled = false;
-        $('pmsg').textContent = 'Salida 1: ' + picked.lat + ', ' + picked.lon;
-      });
+      pmap.on('click', (e) => mark(e.latlng.lat, e.latlng.lng, 'Salida 1: '));
     }
-    pmap.setView(start, 13);
+    // The point already loaded shows marked (it can be kept with "Usar este punto" or changed with a tap).
+    if (had) { mark(m[0], m[1], 'Salida 1 cargada: '); $('pmsg').textContent += ' · tocá el mapa para cambiarla'; }
+    else { if (pmark) { pmark.remove(); pmark = null; } picked = null; $('pUse').disabled = true; $('pmsg').textContent = 'Tocá el mapa donde va la salida 1.'; }
+    pmap.setView(start, had ? 14 : 13);
     setTimeout(() => pmap.invalidateSize(), 50);
   };
+  function mark(lat, lon, label) {
+    picked = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
+    if (pmark) pmark.setLatLng([lat, lon]); else pmark = L.circleMarker([lat, lon], { radius: 10, color: '#fff', weight: 3, fillColor: '#9b2a8f', fillOpacity: 1 }).addTo(pmap);
+    $('pUse').disabled = false;
+    $('pmsg').textContent = label + picked.lat + ', ' + picked.lon;
+  }
   $('pCancel').onclick = () => { $('picker').style.display = 'none'; };
   $('pUse').onclick = () => { if (picked) $('point').value = picked.lat + ', ' + picked.lon; $('picker').style.display = 'none'; };
 
