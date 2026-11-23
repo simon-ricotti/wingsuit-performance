@@ -17,12 +17,15 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const s = await requireRole('admin', 'judge');
   const supabase = await createClient();
-  const [{ data: ev }, { count }] = await Promise.all([
+  const [{ data: ev }, { data: jumpPilots }, { data: pilots }] = await Promise.all([
     supabase.from('events').select('*').eq('id', id).maybeSingle<EventRow>(),
-    supabase.from('jumps').select('event_id', { count: 'exact', head: true }).eq('event_id', id),
+    supabase.from('jumps').select('pilot_id').eq('event_id', id),
+    supabase.from('pilots').select('id, name').order('name'),
   ]);
   if (!ev) notFound();
-  const jumps = count ?? 0;
+  const jumps = jumpPilots?.length ?? 0;
+  // Participants: the chosen list, or else those with jumps.
+  const roster = Array.isArray(ev.roster) && ev.roster.length ? (ev.roster as string[]) : [...new Set((jumpPilots ?? []).map((j) => j.pilot_id as string))];
   const J = judgingOf(ev.judging);
 
   return (
@@ -44,6 +47,17 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
       ) : (
         <p>Perfil de juzgamiento: {J.profile === 'custom' ? 'Personalizado' : JUDGING_PROFILES[J.profile].label}. Los ajustes los cambia el organizador.</p>
       )}
+
+      <section className="stack" id="participants">
+        <h2>Participantes</h2>
+        <p className="sub small">Elegí quiénes vuelan en la jornada. Si no elegís, se toman los que ya tienen saltos. El orden de salida se arma con esta lista.</p>
+        <StateForm event={id} op="roster" submit="Guardar participantes" className="stack">
+          <div className="row">{(pilots ?? []).map((p) => (
+            <label key={p.id} className="chk"><input type="checkbox" name="pilot" value={p.id} defaultChecked={roster.includes(p.id)} /> {p.name}</label>
+          ))}</div>
+          <label className="field" style={{ maxWidth: 200 }}>Pilotos por pasada<input name="passSize" inputMode="numeric" defaultValue={ev.pass_size ?? 5} autoComplete="off" /></label>
+        </StateForm>
+      </section>
 
       {s.role === 'admin' && (
         <>

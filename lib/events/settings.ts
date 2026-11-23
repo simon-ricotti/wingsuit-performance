@@ -78,6 +78,19 @@ const num = (s: unknown, def: number): number => {
 };
 const clampInt = (s: unknown, def: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(num(s, def))));
 
+/** With jumps loaded, the points already in the list stay where they are (each jump keeps the number of its point and
+ * is scored against its coordinates, 5.5.5: points are announced before the competition). Only renaming or adding at
+ * the end. Returns the problem, or null. */
+export function refsLockError(old: { name: string; lat: number; lon: number }[], next: { lat: number; lon: number }[]): string | null {
+  for (let i = 0; i < old.length; i++) {
+    const n = next[i], label = old[i].name || `Punto ${i + 1}`;
+    if (!n) return `La jornada tiene saltos cargados: no se puede quitar «${label}». Solo se pueden agregar puntos al final.`;
+    if (Math.abs(n.lat - old[i].lat) > 1e-6 || Math.abs(n.lon - old[i].lon) > 1e-6)
+      return `La jornada tiene saltos cargados: no se puede mover «${label}» ni cambiar el orden de los puntos (los saltos ya puntuados cambiarían). Solo se pueden agregar puntos al final.`;
+  }
+  return null;
+}
+
 export function parseRefs(text: string): { name: string; lat: number; lon: number }[] {
   const refs: { name: string; lat: number; lon: number }[] = [];
   for (const raw of text.split('\n')) {

@@ -17,6 +17,7 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
   const [alts, setAlts] = useState(() => Object.fromEntries(ALT_FIELDS.map((k) => [k, initial[k]])) as Record<(typeof ALT_FIELDS)[number], string>);
   const [judging, setJudging] = useState<Judging>(initial.judging);
   const [refsText, setRefsText] = useState(initial.refs);
+  const lockedRefs = initial.refs.split('\n').filter((l) => l.trim()).length; // saved points (locked when there are jumps)
   const [jumpRun, setJumpRun] = useState(initial.jumpRun);
   const [laneWidth, setLaneWidth] = useState(initial.laneWidth);
   const laneM = Number(laneWidth) >= 100 ? Number(laneWidth) : 600; // for the map while it is being typed
@@ -74,8 +75,8 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
 
       <h2>Puntaje</h2>
       {jumps > 0 && (
-        <p className="note">La jornada tiene {jumps} saltos: si cambiás la elevación, la ventana, la salida, el carril, la separación o los
-          puntos de referencia, al guardar se recalculan todos con los ajustes nuevos (queda en el historial).</p>
+        <p className="note">La jornada tiene {jumps} saltos: si cambiás la elevación, la ventana, la salida, el carril o la separación,
+          al guardar se recalculan todos con los ajustes nuevos (queda en el historial).</p>
       )}
       <div className="grid">
         <label className="field">Unidad de las alturas
@@ -103,10 +104,11 @@ export function EventForm({ initial, jumps }: { initial: EventFormValues; jumps:
       <input type="hidden" name="jumpRun" value={jumpRun ? [jumpRun.a.lat, jumpRun.a.lon, jumpRun.b.lat, jumpRun.b.lon].join(',') : ''} />
       <div className="row">
         {plan && <button type="button" className="secondary" onClick={() => { setJumpRun(plan.jumpRun); setFit((f) => f + 1); }}>Usar la pasada del planificador</button>}
-        {plan && plan.refs.length > 0 && <button type="button" className="secondary" onClick={() => { fromMap(plan.refs); setFit((f) => f + 1); }}>Usar sus {plan.refs.length} puntos</button>}
+        {plan && plan.refs.length > 0 && jumps === 0 && <button type="button" className="secondary" onClick={() => { fromMap(plan.refs); setFit((f) => f + 1); }}>Usar sus {plan.refs.length} puntos</button>}
         <Link href="/jump-run" className="small">Calcular la pasada con el viento</Link>
       </div>
-      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={laneM} fitKey={String(fit)} />
+      {jumps > 0 && lockedRefs > 0 && <p className="note">Con saltos cargados, los {lockedRefs} puntos que ya están no se pueden mover, quitar ni cambiar de orden: cada salto se puntuó contra el suyo (FAI 5.5.5: los puntos se anuncian antes de la competencia). Si cambia el viento, mové la pasada o agregá puntos nuevos al final; el nombre sí se puede cambiar.</p>}
+      <SatMap refs={mapRefs} onRefsChange={fromMap} jumpRun={jumpRun} onJumpRunChange={setJumpRun} laneWidth={laneM} fitKey={String(fit)} lockedRefs={jumps > 0 ? lockedRefs : 0} />
       <p className="sub small">La pasada es solo para planificar: no cambia el puntaje. Las franjas celestes muestran un carril aproximado de {laneM} m desde cada salida a su punto (la salida 1 al punto 1, la 2 al 2, y así); el carril real de cada salto empieza al inicio de la validación (FAI 2.2).</p>
       <p className="sub small">Las penalidades de carril son las de la FAI (5.6.2), medidas desde el borde del carril: hasta 150 m afuera −10 %, de 150 a 300 m −20 % y más de 300 m −50 %. Con un carril de {laneM} m: sin penalidad hasta {laneM / 2} m del eje, −10 % hasta {laneM / 2 + 150} m, −20 % hasta {laneM / 2 + 300} m y −50 % más allá.</p>
       <p className="sub small">La elevación del DZ define la altura sobre el suelo (FAI 2.1 y 2.2). Los valores por defecto son los del reglamento

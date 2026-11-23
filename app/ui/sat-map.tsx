@@ -23,6 +23,8 @@ interface Props {
   landing?: LatLon | null; onLandingChange?: (p: LatLon) => void;
   /** Metres between exit marks on the jump run (5.5.4: at least 600). */
   exitGap?: number;
+  /** The first N points cannot be dragged (an event with jumps: only adding at the end). */
+  lockedRefs?: number;
   /** Reframe the map when this changes (besides the tracks). */
   fitKey?: string;
 }
@@ -53,7 +55,7 @@ function exitSlots(j: JumpRun, gap: number): [number, number][] {
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 
-export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChange, tracks = [], laneWidth = 600, height = 420, landing = null, onLandingChange, exitGap = 600, fitKey = '' }: Props) {
+export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChange, tracks = [], laneWidth = 600, height = 420, landing = null, onLandingChange, exitGap = 600, fitKey = '', lockedRefs = 0 }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const L = useRef<typeof Leaflet | null>(null);
   const map = useRef<Leaflet.Map | null>(null);
@@ -157,7 +159,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
 
     refs.forEach((r, i) => {
       const label = r.name || `Punto ${i + 1}`;
-      const mk = Lf.marker([r.lat, r.lon], { icon: Lf.divIcon({ className: 'refpin', iconSize: [18, 18] }), draggable: !!onRefsChange, title: label, keyboard: true }).addTo(g);
+      const mk = Lf.marker([r.lat, r.lon], { icon: Lf.divIcon({ className: 'refpin', iconSize: [18, 18] }), draggable: !!onRefsChange && i >= lockedRefs, title: label, keyboard: true }).addTo(g);
       // Horizontal distance from its exit (exit N → point N), updated while dragging.
       const text = (lat: number, lon: number) => {
         if (!slots[i]) return label;
@@ -167,7 +169,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       mk.on('drag', () => { const p = mk.getLatLng(); mk.setTooltipContent(text(p.lat, p.lng)); });
       mk.bindTooltip(text(r.lat, r.lon), tip());
       mk.on('click', () => copy(r.lat, r.lon));
-      if (onRefsChange) mk.on('dragend', () => {
+      if (onRefsChange && i >= lockedRefs) mk.on('dragend', () => {
         const p = mk.getLatLng();
         onRefsChange(refs.map((x, k) => (k === i ? { ...x, lat: round6(p.lat), lon: round6(p.lng) } : x)));
       });
@@ -186,7 +188,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
     const key = tracks.map((t) => t.name).join('|') + '#' + fitKey;
     if (fitted.current !== key && bounds.length) m.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
     fitted.current = key;
-  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange, landing, onLandingChange, exitGap, fitKey, labels]);
+  }, [ready, refs, jumpRun, tracks, laneWidth, onRefsChange, landing, onLandingChange, exitGap, fitKey, labels, lockedRefs]);
 
   return (
     <div className="stack">

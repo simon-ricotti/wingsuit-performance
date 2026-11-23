@@ -39,16 +39,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
       <p className="noprint"><Link className="back" href={`/admin/events/${id}`}>← {ev.name}</Link></p>
       <h1>Orden de salida: {ev.name}</h1>
 
-      <section className="stack noprint">
-        <h2>Participantes</h2>
-        <p className="sub small">Elegí quiénes vuelan en la jornada. Si no elegís, se toman los que ya tienen saltos.</p>
-        <StateForm event={id} op="roster" submit="Guardar participantes" className="stack">
-          <div className="row">{(pilots ?? []).map((p) => (
-            <label key={p.id} className="chk"><input type="checkbox" name="pilot" value={p.id} defaultChecked={roster.includes(p.id)} /> {p.name}</label>
-          ))}</div>
-          <label className="field" style={{ maxWidth: 200 }}>Pilotos por pasada<input name="passSize" inputMode="numeric" defaultValue={passSize} autoComplete="off" /></label>
-        </StateForm>
-      </section>
+      <p className="sub noprint">Participantes: {roster.length} · {passSize} por pasada. Se eligen en <Link href={`/admin/events/${id}/settings#participants`}>Ajustes</Link>.</p>
 
       <section className="stack">
         <h2>Orden de las tareas</h2>

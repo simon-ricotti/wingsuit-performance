@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { assertRole } from '@/lib/auth/session';
 import { actorName, callWrite, type FormState } from '@/lib/admin/write';
-import { parseEventSettings, SettingsError, type EventSettings } from '@/lib/events/settings';
+import { parseEventSettings, refsLockError, SettingsError, type EventSettings } from '@/lib/events/settings';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { loadEvent, rescorePayload } from '@/lib/jumps/server';
 import type { EventRow } from '@/lib/data/rows';
 
@@ -30,6 +31,11 @@ export async function saveEvent(_prev: FormState, form: FormData): Promise<FormS
   let scores = null;
   if (id) {
     const ev = await loadEvent(id);
+    const lock = ev ? refsLockError((ev.refs ?? []) as { name: string; lat: number; lon: number }[], (settings.refs ?? []) as { lat: number; lon: number }[]) : null;
+    if (lock) {
+      const { count } = await createAdminClient().from('jumps').select('event_id', { count: 'exact', head: true }).eq('event_id', id);
+      if (count) return { error: lock };
+    }
     if (ev && scoringChanged(ev, settings)) {
       const p = await rescorePayload({ ...ev, ...settings, id });
       if (p.total > 0) scores = p.scores;
