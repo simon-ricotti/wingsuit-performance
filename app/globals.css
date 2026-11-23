@@ -261,3 +261,15 @@ ol.podium li::before { counter-increment: pos; content: counter(pos); font-weigh
 .ref-print { display: none; color: var(--muted); }
 @media print { .refpick { display: none; } .ref-print { display: inline; } }
 
+
+/* Replay: celebration over the stage (inside #rp-stage so it shows in full screen too). */
+.celebrate { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; background: rgb(0 0 0 / .45); cursor: pointer; animation: celebrate-in .3s ease-out; }
+.celebrate canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.celebrate-card { position: relative; display: grid; gap: 6px; justify-items: center; text-align: center; max-width: min(90vw, 520px); padding: 24px 28px; border-radius: 18px;
+  background: var(--bg); color: var(--fg); border: 4px solid var(--c); box-shadow: 0 20px 60px rgb(0 0 0 / .5); animation: celebrate-pop .5s cubic-bezier(.2, 1.4, .4, 1); }
+.celebrate-card span { font-size: 64px; line-height: 1; }
+.celebrate-card strong { font-size: clamp(1.4rem, 5vw, 2.2rem); line-height: 1.2; }
+.celebrate-card small { opacity: .7; }
+@keyframes celebrate-in { from { opacity: 0; } }
+@keyframes celebrate-pop { from { transform: scale(.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .celebrate, .celebrate-card { animation: none; } }

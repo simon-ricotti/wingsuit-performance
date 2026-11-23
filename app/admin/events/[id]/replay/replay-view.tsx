@@ -1,16 +1,17 @@
 'use client';
 // Replay of a pass: legacy/src/replay.js (2D views and live board) and a copy of replay3d.js (three.js r128, window planes as wide as every flyer)
 // mounted as they are. They read the engine from window.WSP and their data from window.WSApp.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as engine from '@/lib/engine';
 import type { JumpRecord, PackedTrack, RefPoint, ScoreConfig, Task } from '@/lib/engine';
 import { TASK_UNIT } from '@/lib/jumps/score';
 import { fmt } from '@/lib/standings/views';
 import { SatMap, type MapTrack } from '@/app/ui/sat-map';
+import { Celebration } from './celebration';
 
 export interface ReplayItem { jump: JumpRecord; packed: PackedTrack; name: string; color: string; ref: RefPoint | null }
 
-type Legacy = { Replay: { mount(): Promise<void>; toggle(): void; restart(): void; setSpeed(s: number): void; stop(): void }; Replay3D?: { setMode(m: string): void } };
+type Legacy = { Replay: { mount(): Promise<void>; toggle(): void; restart(): void; setSpeed(s: number): void; stop(): void; _R: { t: number; tMax: number } }; Replay3D?: { setMode(m: string): void } };
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
 function loadThree(): Promise<void> {
@@ -72,6 +73,25 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, pts, off, sync, plan, task, cfg, altFt]);
 
+  // When the playback reaches the end, the board shows "Gana …": celebrate it once per arrival.
+  const [won, setWon] = useState<{ text: string; color: string } | null>(null);
+  const closeWon = useCallback(() => setWon(null), []);
+  useEffect(() => {
+    const board = document.getElementById('rp-board');
+    if (!board) return;
+    let shown = false;
+    const mo = new MutationObserver(() => {
+      const w = board.querySelector('.winner'), r = (window as unknown as Legacy).Replay?._R;
+      if (!w) { shown = false; return; }
+      if (shown || !r || r.t < r.tMax) return;
+      shown = true;
+      const first = board.querySelector<HTMLElement>('.lb');
+      setWon({ text: w.textContent ?? '', color: first?.style.getPropertyValue('--c') || 'var(--brand)' });
+    });
+    mo.observe(board, { childList: true });
+    return () => mo.disconnect();
+  }, []);
+
   const R = () => (window as unknown as Legacy).Replay;
   const fullscreen = () => {
     const el = document.getElementById('rp-stage');
@@ -90,6 +110,7 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
       </div>
       {late.length > 0 && <p className="sub small" role="status">{late.join(', ')}: el GPS no grabó la entrada a la ventana; se muestra quieto en su primer punto hasta que empiezan los datos.</p>}
       <div id="rp-stage" className="stack">
+        {won && <Celebration text={won.text} color={won.color} onClose={closeWon} />}
         <div className="replay">
           <div className="view3d" id="rp-3d">
             <canvas id="cv3d" aria-label="Vista 3D de la tanda" />
