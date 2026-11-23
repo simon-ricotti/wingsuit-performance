@@ -15,14 +15,26 @@ const GROUND_MAX = 11; // m/s, FAI Sporting Code Section 5, 1.3.3
 const RAD = Math.PI / 180;
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const n = (s: string) => parseFloat(s.replace(',', '.'));
+// Shortest distance between segments p1–p2 and q1–q2 (metres in a local projection); 0 if they cross.
+type XY = [number, number];
+function segPoint(p: XY, a: XY, b: XY) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function segDist(p1: XY, p2: XY, q1: XY, q2: XY) {
+  const side = (a: XY, b: XY, c: XY) => Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  if (side(p1, p2, q1) * side(p1, p2, q2) < 0 && side(q1, q2, p1) * side(q1, q2, p2) < 0) return 0;
+  return Math.min(segPoint(p1, q1, q2), segPoint(p2, q1, q2), segPoint(q1, p1, p2), segPoint(q2, p1, p2));
+}
 const deg = (d: number) => `${String(Math.round(((d % 360) + 360) % 360) || 360).padStart(3, '0')}°`;
 
-interface Inputs { windFrom: string; windKt: string; tasKt: string; exits: string; gap: string; glide: string; upwind: string; side: 1 | -1 }
+interface Inputs { windFrom: string; windKt: string; tasKt: string; exits: string; gap: string; glide: string; upwind: string; lane: string; side: 1 | -1 }
 // Upwind distance from the glide: from the exit to the window (2500 m) the flyer dives to build speed (counted as
 // no distance), then glides (horizontal / height, ~2.5) down to the opening (~3500 ft): 2.5 × 1433 m ≈ 3600 m.
 const WINDOW_TOP = 2500, OPEN_M = 3500 * 0.3048;
 const upwindOf = (glide: string) => { const g = n(glide); return isFinite(g) && g > 0 ? String(Math.round((g * (WINDOW_TOP - OPEN_M)) / 100) * 100) : ''; };
-const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', glide: '2,5', upwind: upwindOf('2,5'), side: 1 };
+const DEFAULTS: Inputs = { windFrom: '90', windKt: '15', tasKt: '80', exits: '6', gap: '600', glide: '2,5', upwind: upwindOf('2,5'), lane: '600', side: 1 };
 const OLD_DEFAULTS = ['1500', '5500']; // earlier defaults (too far): move saved plans to the new one
 
 interface Hour { time: string; w700: [number, number]; w850: [number, number]; w10: [number, number]; gust: number }
@@ -62,13 +74,22 @@ export function Planner() {
     // Flying a track across the wind, the plane crabs: ground speed = √(TAS² − W²).
     const gs = Math.sqrt(tas * tas - w * w) * KT;
     const secs = Math.ceil(gap / gs); // rounded up so the separation is never under `gap`
+    const ex = Array.from({ length: exits }, (_, j) => [cx - hx * half + hx * gap * j, cy - hy * half + hy * gap * j] as [number, number]);
     // Exit N flies to point N (as the map draws it): distance from that exit.
     const refDist = refs.map((r, j) => {
       if (j >= exits) return null;
-      const q = pr(r.lat, r.lon), ex = cx - hx * half + hx * gap * j, ey = cy - hy * half + hy * gap * j;
-      return Math.hypot(q[0] - ex, q[1] - ey);
+      const q = pr(r.lat, r.lon);
+      return Math.hypot(q[0] - ex[j][0], q[1] - ex[j][1]);
     });
-    return { run, heading, gs, secs, length: half * 2, gap, refDist };
+    // Suggested points: each exit moved downwind by the upwind distance (parallel lanes, one per exit, across the landing).
+    const suggested: RefPoint[] = ex.map(([x, y], j) => ({ name: `Punto ${j + 1}`, ...back(x - ux * up, y - uy * up) }));
+    // Clearance between the lanes of consecutive exits (exit → its point, `lane` m wide): negative = they overlap.
+    const lane = n(inp.lane);
+    const seps = refs.length && lane > 0 ? ex.slice(1).map((_, j) => {
+      const a = refs[j % refs.length], b = refs[(j + 1) % refs.length], qa = pr(a.lat, a.lon), qb = pr(b.lat, b.lon);
+      return Math.round(segDist(ex[j], qa, ex[j + 1], qb) - lane);
+    }) : [];
+    return { run, heading, gs, secs, length: half * 2, gap, refDist, suggested, seps };
   }, [inp, landing, refs]);
 
   // Save after every change, once the stored plan was read.
@@ -144,6 +165,7 @@ export function Planner() {
           <input inputMode="decimal" value={inp.glide} onChange={(e) => { const glide = e.target.value; setInp((x) => ({ ...x, glide, upwind: upwindOf(glide) || x.upwind })); }} />
         </label>
         {field('upwind', 'Centro de la pasada a barlovento del aterrizaje', 'm')}
+        {field('lane', 'Ancho del carril', 'm')}
       </div>
       <p className="sub small">La distancia a barlovento sale del planeo: de la salida a la ventana (2500 m) se pica para tomar velocidad y casi no se avanza; desde ahí se planea hasta la apertura (~3500 ft). Con 2,5 da {upwindOf('2,5')} m. Al cambiar el planeo se recalcula; también la podés ajustar a mano.</p>
       {n(inp.gap) < 600 && <p className="error" role="alert">La FAI pide al menos 600 m entre salidas (5.5.4).</p>}
@@ -171,8 +193,15 @@ export function Planner() {
       )}
 
       <h2>Mapa</h2>
-      <p className="sub small">Arrastrá el cuadrado naranja al área de aterrizaje. Tocá el mapa para agregar puntos de referencia y arrastralos para moverlos. Los círculos son las salidas: la salida 1 va al punto 1, la 2 al punto 2, y así (si hay más salidas que puntos, se vuelve a empezar). Las franjas celestes son un carril aproximado de 600 m desde cada salida hasta su punto.</p>
+      <p className="sub small">Arrastrá el cuadrado naranja al área de aterrizaje. Tocá el mapa para agregar puntos de referencia y arrastralos para moverlos. Los círculos son las salidas: la salida 1 va al punto 1, la 2 al punto 2, y así (si hay más salidas que puntos, se vuelve a empezar). Las franjas celestes son el carril de cada salida hasta su punto, del ancho que cargaste.</p>
+      {plan.suggested && (
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => setRefs(plan.suggested!)}>{refs.length ? 'Reemplazar por los puntos sugeridos' : 'Sugerir puntos'}</button>
+          <span className="sub small">Un punto por salida, corrido a sotavento {inp.upwind} m (la distancia a barlovento): carriles paralelos que cruzan el aterrizaje. Después movelos a gusto.</span>
+        </div>
+      )}
       <SatMap refs={refs} onRefsChange={setRefs} jumpRun={'run' in plan ? plan.run : null} landing={landing} onLandingChange={setLanding} exitGap={'gap' in plan ? plan.gap : 600} height={480}
+        laneWidth={n(inp.lane) >= 100 ? n(inp.lane) : 600}
         fitKey={`${inp.windFrom}|${inp.side}|${inp.upwind}|${inp.exits}`} />
       {refs.length > 0 && (
         <ul className="stack" style={{ listStyle: 'none', padding: 0 }}>
@@ -184,6 +213,15 @@ export function Planner() {
             </li>
           ))}
         </ul>
+      )}
+      {plan.seps && plan.seps.length > 0 && (
+        <div className="stack">
+          <h3>Separación entre carriles</h3>
+          <ul>{plan.seps.map((d, j) => (
+            <li key={j} className={d < 0 ? 'pen' : undefined}>Salidas {j + 1} y {j + 2}: {d < 0 ? `se superponen ${-d} m` : d === 0 ? 'se tocan (0 m entre los bordes)' : `${d} m entre los bordes`}</li>
+          ))}</ul>
+          <p className="sub small">Entre los bordes de los carriles de {inp.lane} m, de cada salida a su punto. Si se superponen, separá los puntos o las salidas.</p>
+        </div>
       )}
       <p className="sub small">Es una ayuda para planificar: no cambia el puntaje. El plan queda guardado en este navegador; para usarlo en una jornada, abrí sus ajustes y tocá «Usar la pasada del planificador».</p>
     </div>

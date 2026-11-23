@@ -47,7 +47,7 @@ function corridor(a: LatLon, b: LatLon, half: number, withBands: boolean): { pol
 /** Points every `gap` metres along the jump run. */
 function exitSlots(j: JumpRun, gap: number): [number, number][] {
   const pr = projector(j.a.lat, j.a.lon), k = pr(j.a.lat + 1, j.a.lon + 1), r = pr(j.b.lat, j.b.lon), L = Math.hypot(r[0], r[1]);
-  const n = Math.min(40, Math.floor(L / gap + 1e-6));
+  const n = Math.min(40, Math.floor(L / gap + 0.01)); // 1 % slack: the run ends are rounded to 6 decimals
   return Array.from({ length: n + 1 }, (_, i) => [j.a.lat + (r[1] * i * gap / L) / k[1], j.a.lon + (r[0] * i * gap / L) / k[0]]);
 }
 
@@ -128,7 +128,7 @@ export function SatMap({ refs = [], onRefsChange, jumpRun = null, onJumpRunChang
       slots = exitSlots(jumpRun, exitGap);
       const mid = { lat: (jumpRun.a.lat + jumpRun.b.lat) / 2, lon: (jumpRun.a.lon + jumpRun.b.lon) / 2 };
       if (refs.length) slots.forEach(([lat, lon], i) => {
-        for (const c of corridor({ lat, lon }, refs[i % refs.length], half, false)) Lf.polygon(c.poly, { stroke: false, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g);
+        for (const c of corridor({ lat, lon }, refs[i % refs.length], half, false)) Lf.polygon(c.poly, { color: c.color, weight: 1, opacity: 0.8, fillColor: c.color, fillOpacity: 0.12, interactive: false }).addTo(g); // edges: to see the gap between lanes
       });
       // Direction of the jump run (a → b): arrowheads along the line and its heading.
       const pr = projector(jumpRun.a.lat, jumpRun.a.lon), k = pr(jumpRun.a.lat + 1, jumpRun.a.lon + 1), rb = pr(jumpRun.b.lat, jumpRun.b.lon);
