@@ -6,7 +6,7 @@ Idioma de la interfaz: español rioplatense, coma decimal, unidades m o ft confi
 
 Idioma del código: **inglés** (identificadores, comentarios, nombres de archivo, rutas/URLs, tablas, roles, buckets, tests). En castellano solo los textos que ve el usuario. `legacy/` queda como está (es la referencia). Los documentos de `docs/` están escritos en castellano, con nombres de archivo en inglés.
 
-## Estado actual y cómo seguir (actualizado: 21 nov 2026)
+## Estado actual y cómo seguir (actualizado: 23 nov 2026)
 - **Las 7 etapas están hechas** y en `main`, publicadas en Vercel (la URL de producción está en el proyecto de Vercel). Lo que sigue es la **prueba general** del organizador con jueces y pilotos reales, y corregir lo que aparezca.
 - **Hecho el 18 nov 2026 (después de las etapas):**
   - Cara nueva: paleta bordó de Saltá en Rosario (`--brand`; el naranja `--accent` queda solo para datos: ventana en los gráficos y mejor de la ronda), barra superior fija, botones, menús en tarjetas, League Spartan + Lato con `next/font`. Ícono provisorio (silueta de wingsuit); **el nombre de la app sigue sin definir** (propuestas: Carril, Planeo, Ventana, Pampa/Paraná Performance).
