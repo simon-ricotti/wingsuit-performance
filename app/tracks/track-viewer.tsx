@@ -22,6 +22,7 @@ interface Loaded { id: string; name: string; device: string; pts: TrackPoint[] |
 export function TrackViewer() {
   const [files, setFiles] = useState<Loaded[]>([]);
   const [elev, setElev] = useState('26');
+  const [laneW, setLaneW] = useState(String(DEFAULT_CFG.laneWidth));
   const [task, setTask] = useState<Task>('distance');
   const [ref, setRef] = useState<RefPoint | null>(null);
   const [reading, setReading] = useState(false);
@@ -42,7 +43,10 @@ export function TrackViewer() {
   }
 
   const elevM = parseFloat(elev.replace(',', '.'));
-  const cfg = useMemo(() => ({ ...DEFAULT_CFG, elev: isFinite(elevM) ? elevM : DEFAULT_CFG.elev }), [elevM]);
+  const laneM = parseFloat(laneW.replace(',', '.'));
+  const cfg = useMemo(() => ({
+    ...DEFAULT_CFG, elev: isFinite(elevM) ? elevM : DEFAULT_CFG.elev, laneWidth: laneM >= 50 && laneM <= 5000 ? laneM : DEFAULT_CFG.laneWidth,
+  }), [elevM, laneM]);
 
   // Every track scored as a jump of the chosen task in one round: % of the best, as in a round (5.10.2).
   const scored = useMemo(() => {
@@ -78,6 +82,9 @@ export function TrackViewer() {
           <label className="field">Elevación del DZ (m sobre el nivel del mar)
             <input inputMode="decimal" value={elev} onChange={(e) => setElev(e.target.value)} />
           </label>
+          <label className="field">Ancho del carril (m)
+            <input inputMode="decimal" value={laneW} onChange={(e) => setLaneW(e.target.value)} />
+          </label>
           <label className="field">Tarea para comparar
             <select value={task} onChange={(e) => setTask(e.target.value as Task)}>
               {engine.TASKS.map((t) => <option key={t} value={t}>{TASK_LABEL[t]}</option>)}
@@ -94,7 +101,7 @@ export function TrackViewer() {
           <SatMap tracks={mapTracks} refs={ref ? [ref] : []} onRefsChange={(r) => { const last = r[r.length - 1]; setRef(last ? { ...last, name: 'Punto de referencia' } : null); }} laneWidth={cfg.laneWidth} />
           <div className="row">
             <p className="sub small" style={{ margin: 0 }}>{ref
-              ? 'Con un punto de referencia se mide el carril de cada salto, como en competencia (2.2, 5.6.2).'
+              ? `Con un punto de referencia se mide el carril de cada salto (${cfg.laneWidth} m de ancho), como en competencia (2.2, 5.6.2).`
               : 'Opcional: tocá el mapa para poner un punto de referencia y medir el carril de cada salto.'}</p>
             {ref && <button type="button" className="secondary" onClick={() => setRef(null)}>Quitar el punto</button>}
           </div>

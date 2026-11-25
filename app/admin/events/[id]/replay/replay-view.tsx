@@ -65,7 +65,7 @@ export function ReplayView({ items, task, cfg, altFt }: { items: ReplayItem[]; t
     (async () => {
       await loadThree();
       await import('@/app/admin/events/[id]/replay/replay3d.js');
-      await import('@/legacy/src/replay.js');
+      await import('@/app/admin/events/[id]/replay/replay.js');
       if (!cancelled) await w.Replay.mount();
     })();
     return () => { cancelled = true; w.Replay?.stop(); };

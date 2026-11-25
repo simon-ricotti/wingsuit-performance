@@ -42,6 +42,15 @@
     g.translate(0, 0, -0.035); g.rotateX(Math.PI / 2); g.scale(75, 75, 75);
     return g;
   }
+  // Ground strip along a→b (plan metres: x east, y north) between lateral offsets o0 and o1 (m).
+  function strip(a, b, o0, o1, color, op) {
+    var dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy) || 1, nx = -dy / len, ny = dx / len;
+    var P = function (p, o) { return [p[0] + nx * o, 1, -(p[1] + ny * o)]; };
+    var q0 = P(a, o0), q1 = P(b, o0), q2 = P(b, o1), q3 = P(a, o1);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([].concat(q0, q1, q2, q0, q2, q3), 3));
+    return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
+  }
   function band(x0, x1, z0, z1, y, color, op) {
     var g = new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0));
     var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
@@ -72,6 +81,13 @@
     var grid = new THREE.GridHelper(cells * 500, cells, 0x2c4a60, 0x18293a);
     grid.position.set((gx0 + gx1) / 2, 0, -(gf0 + gf1) / 2); V.root.add(grid);
     V.root.add(band(gx0 - size, gx1 + size, -(gf0 - size), -(gf1 + size), -2, 0x0d1924, 1));
+    if (real) R.items.forEach(function (it) { // real view: each flyer's lane on the ground, from validation start to the point
+      if (!it.laneA) return;
+      V.root.add(strip(it.laneA, it.laneB, -half, half, 0x3fc1c9, 0.22));
+      [[half, half + 150, 0xf0b354], [half + 150, half + 300, 0xff7a3d]].forEach(function (z) {
+        V.root.add(strip(it.laneA, it.laneB, z[0], z[1], z[2], 0.16)); V.root.add(strip(it.laneA, it.laneB, -z[1], -z[0], z[2], 0.16));
+      });
+    });
     if (R.hasLane) { // carril en el suelo: centro válido y franjas de penalidad
       V.root.add(band(-half, half, -gf0, -gf1, 1, 0x3fc1c9, 0.22));
       [[half, half + 150, 0xf0b354], [half + 150, half + 300, 0xff7a3d]].forEach(function (z) {

@@ -2,4 +2,5 @@
 declare module '*/legacy/src/review.js';
 declare module '*/legacy/src/replay.js';
 declare module '*/legacy/src/replay3d.js';
+declare module '*/replay/replay.js'; // app copy: lane label with the event's width
 declare module '*/replay/replay3d.js'; // app copy: window planes as wide as every flyer
