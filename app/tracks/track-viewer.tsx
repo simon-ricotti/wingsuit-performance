@@ -2,6 +2,7 @@
 // Loose tracks, outside any event: everything runs in the browser with the same engine (nothing is uploaded).
 // To keep a jump in the pilot's history and the ranking, it is uploaded to an open free event from /account.
 import { useMemo, useState } from 'react';
+import type { ScoreResult } from '@/lib/engine';
 import Link from 'next/link';
 import * as engine from '@/lib/engine';
 import { DEFAULT_CFG, type RefPoint, type Task, type TrackPoint } from '@/lib/engine';
@@ -9,6 +10,7 @@ import { jumpDoc, TASK_LABEL } from '@/lib/jumps/score';
 import { JumpResult } from '@/app/admin/jumps/jump-result';
 import { ReplayView, type ReplayItem } from '@/app/admin/events/[id]/replay/replay-view';
 import { SatMap, type MapTrack } from '@/app/ui/sat-map';
+import { FlightAnalysis } from './flight-analysis';
 
 // Colors of the replay (one per track).
 const COLORS = ['#d9480f', '#0b7f86', '#6f42c1', '#2f6fde', '#c2255c', '#5c7c00', '#a15c00', '#0f7a52', '#7a4b2a', '#495867'];
@@ -108,6 +110,7 @@ export function TrackViewer() {
                 <>
                   <JumpResult jump={x.jump} units="m" exitMin={cfg.exitMin} exitMax={cfg.exitMax} pilotName={() => ''} />
                   {ok.length > 1 && <p className="sub small" style={{ margin: 0 }}>{TASK_LABEL[task]}: {engine.es(+(x.jump._points ?? 0).toFixed(1))} % del mejor de los cargados.</p>}
+                  <Extra pts={x.trimmed!} sc={x.sc!} elev={cfg.elev} />
                 </>
               ) : <p className="error">{x.error}</p>}
             </section>
@@ -124,5 +127,16 @@ export function TrackViewer() {
         </>
       )}
     </div>
+  );
+}
+
+/** Flight analysis, mounted only when opened (it draws two canvases per track). */
+function Extra({ pts, sc, elev }: { pts: TrackPoint[]; sc: ScoreResult; elev: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="extra" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>Análisis del vuelo (extra): velocidades, planeo y curva polar</summary>
+      {open && <FlightAnalysis pts={pts} sc={sc} elev={elev} />}
+    </details>
   );
 }

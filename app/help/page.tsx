@@ -146,7 +146,7 @@ export default function HelpPage() {
         <li>Si la jornada lo permite, aparece en <i>Cargar un salto</i>: elegí tarea, ronda y tu punto de referencia, subí el archivo del GPS y guardá. Los jueces lo revisan.</li>
         <li>No podés reemplazar un salto ya cargado: si hace falta (por un re-salto), lo hace un juez.</li>
         <li>Los resultados son provisorios hasta que los jueces validan cada tarea.</li>
-        <li><b>Saltos sueltos:</b> en <Link href="/tracks">Tracks</Link> podés subir uno o más archivos sin jornada y ver el mapa, las métricas y el replay. No se guarda nada; para que un salto quede en tu historial, cargalo en una jornada libre abierta.</li>
+        <li><b>Saltos sueltos:</b> en <Link href="/tracks">Tracks</Link> podés subir uno o más archivos sin jornada y ver el mapa, las métricas y el replay. En cada salto, <i>Análisis del vuelo (extra)</i> muestra velocidad horizontal, vertical y total, planeo y altura en el tiempo, y la curva polar (horizontal contra vertical, con las líneas de planeo 1:1, 2:1 y 3:1). No se guarda nada; para que un salto quede en tu historial, cargalo en una jornada libre abierta.</li>
         <li>El <Link href="/ranking">Ranking</Link> muestra los récords y la mejor marca de cada piloto en las jornadas publicadas, de competencia y de entrenamiento.</li>
       </ul>
 

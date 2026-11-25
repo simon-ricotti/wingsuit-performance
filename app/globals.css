@@ -273,3 +273,15 @@ ol.podium li::before { counter-increment: pos; content: counter(pos); font-weigh
 @keyframes celebrate-in { from { opacity: 0; } }
 @keyframes celebrate-pop { from { transform: scale(.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .celebrate, .celebrate-card { animation: none; } }
+
+/* Flight analysis in /tracks (extra): time chart and polar side by side, stacked on the phone. */
+details.extra > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+details.extra[open] > summary { margin-bottom: 8px; }
+.flight-charts { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+.flight-charts canvas { width: 100%; height: 440px; display: block; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; touch-action: pan-y; }
+.flight-charts canvas:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (max-width: 860px) { .flight-charts { grid-template-columns: 1fr; } .flight-charts canvas.fa-time { height: 380px; } .flight-charts canvas.fa-polar { height: 320px; } }
+.readout { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px 12px; margin: 0; font-variant-numeric: tabular-nums; }
+.readout dt { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.readout dt i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+.readout dd { margin: 0; font-weight: 700; }
